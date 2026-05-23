@@ -5,7 +5,11 @@ namespace Kit.Updater;
 
 internal sealed class UpdateDownloader
 {
-    public async Task DownloadFileAsync(string url, string targetPath, string version, IProgress<InstallationProgress>? progress, CancellationToken ct)
+    public async Task DownloadFileAsync(string                           url,
+                                        string                           targetPath,
+                                        string                           version,
+                                        IProgress<InstallationProgress>? progress,
+                                        CancellationToken                ct)
     {
         using (var response = await UpdaterHttpClient.Shared.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false))
         {
@@ -14,22 +18,22 @@ internal sealed class UpdateDownloader
             var contentLength = response.Content.Headers.ContentLength;
 
             using (var responseStream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
-            using (var fileStream = new FileStream(targetPath, FileMode.Create, FileAccess.Write, FileShare.None))
             {
-                var  buffer    = new byte[81920];
-                long totalRead = 0;
-                int  bytesRead;
-                while ((bytesRead = await responseStream.ReadAsync(buffer, 0, buffer.Length, ct).ConfigureAwait(false)) > 0)
-                {
-                    await fileStream.WriteAsync(buffer, 0, bytesRead, ct).ConfigureAwait(false);
-                    totalRead += bytesRead;
-                    progress?.Report(new InstallationProgress(InstallationPhase.Downloading, version, totalRead, contentLength));
-                }
+                await DownloadTransfer.CopyToFileAsync(
+                                          responseStream,
+                                          targetPath,
+                                          contentLength,
+                                          ct,
+                                          (totalRead, total) => progress?.Report(new InstallationProgress(InstallationPhase.Downloading, version, totalRead, total)))
+                                      .ConfigureAwait(false);
             }
         }
     }
 
-    public async Task VerifyIntegrityAsync(AvailableUpdate update, string archivePath, bool requireIntegrityVerification, CancellationToken ct)
+    public async Task VerifyIntegrityAsync(AvailableUpdate   update,
+                                           string            archivePath,
+                                           bool              requireIntegrityVerification,
+                                           CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(update.Sha256))
         {

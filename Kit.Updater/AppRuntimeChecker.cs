@@ -1,5 +1,4 @@
-﻿using Microsoft.Win32;
-using System.Net.Http;
+using Microsoft.Win32;
 using System.Diagnostics;
 
 namespace Kit.Updater;
@@ -19,23 +18,21 @@ internal static class AppRuntimeChecker
         {
             progress.Report(new InstallationProgress(InstallationPhase.DownloadingAppRuntime, "2.0", 0, null));
 
-            using (var response = await UpdaterHttpClient.Shared.GetAsync(DownloadUrl, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false))
+            using (var response = await UpdaterHttpClient.Shared.GetAsync(DownloadUrl, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false))
             {
                 response.EnsureSuccessStatusCode();
+
                 var contentLength = response.Content.Headers.ContentLength;
 
                 using (var responseStream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
-                using (var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
                 {
-                    var  buffer    = new byte[81920];
-                    long totalRead = 0;
-                    int  bytesRead;
-                    while ((bytesRead = await responseStream.ReadAsync(buffer, 0, buffer.Length, ct).ConfigureAwait(false)) > 0)
-                    {
-                        await fileStream.WriteAsync(buffer, 0, bytesRead, ct).ConfigureAwait(false);
-                        totalRead += bytesRead;
-                        progress.Report(new InstallationProgress(InstallationPhase.DownloadingAppRuntime, "2.0", totalRead, contentLength));
-                    }
+                    await DownloadTransfer.CopyToFileAsync(
+                                              responseStream,
+                                              tempPath,
+                                              contentLength,
+                                              ct,
+                                              (totalRead, total) => progress.Report(new InstallationProgress(InstallationPhase.DownloadingAppRuntime, "2.0", totalRead, total)))
+                                          .ConfigureAwait(false);
                 }
             }
 
@@ -49,16 +46,11 @@ internal static class AppRuntimeChecker
                 Verb            = "runas"
             };
 
-            using (var process = Process.Start(startInfo))
+            var result = await ProcessExecution.RunAsync(startInfo, ct).ConfigureAwait(false);
+
+            if (result.ExitCode != 0 && result.ExitCode != 3010)
             {
-                if (process == null) throw new InvalidOperationException("Failed to start Windows App Runtime installer.");
-
-                await Task.Run(process.WaitForExit, ct).ConfigureAwait(false);
-
-                if (process.ExitCode != 0 && process.ExitCode != 3010)
-                {
-                    throw new InvalidOperationException($"Windows App Runtime installer failed with exit code {process.ExitCode}.");
-                }
+                throw new InvalidOperationException($"Windows App Runtime installer failed with exit code {result.ExitCode}.");
             }
         }
         finally
@@ -87,8 +79,7 @@ internal static class AppRuntimeChecker
             if (key == null)
                 return false;
 
-            if (key.GetSubKeyNames().Any(subkeyName => subkeyName.StartsWith("Microsoft.WinAppRuntime.DDLM.2.0.", StringComparison.OrdinalIgnoreCase))
-               )
+            if (key.GetSubKeyNames().Any(subkeyName => subkeyName.StartsWith("Microsoft.WinAppRuntime.DDLM.2.0.", StringComparison.OrdinalIgnoreCase)))
             {
                 return true;
             }

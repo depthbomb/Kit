@@ -1,5 +1,4 @@
-﻿using Shared;
-using System.Net.Http;
+using Shared;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 
@@ -58,34 +57,23 @@ internal sealed class RuntimeManager
                 RedirectStandardError  = true
             };
 
-            using (var process = Process.Start(startInfo))
+            var result = await ProcessExecution.RunAsync(startInfo, ct).ConfigureAwait(false);
+            if (result.ExitCode != 0)
             {
-                if (process == null)
+                return runtimes;
+            }
+
+            var lines = result.StandardOutput.Split([Environment.NewLine], StringSplitOptions.RemoveEmptyEntries);
+            foreach (var line in lines)
+            {
+                var match = Regex.Match(line, @"^(?<name>[\w\.]+) (?<version>[\d\.\w\-]+) \[(?<path>.*)\]$");
+                if (match.Success)
                 {
-                    return runtimes;
-                }
-
-                var output = await process.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
-
-                await Task.Run(process.WaitForExit, ct).ConfigureAwait(false);
-
-                if (process.ExitCode != 0)
-                {
-                    return runtimes;
-                }
-
-                var lines = output.Split([Environment.NewLine], StringSplitOptions.RemoveEmptyEntries);
-                foreach (var line in lines)
-                {
-                    var match = Regex.Match(line, @"^(?<name>[\w\.]+) (?<version>[\d\.\w\-]+) \[(?<path>.*)\]$");
-                    if (match.Success)
+                    var name        = match.Groups["name"].Value;
+                    var versionText = match.Groups["version"].Value;
+                    if (ApplicationVersion.TryParse(versionText, out var version))
                     {
-                        var name        = match.Groups["name"].Value;
-                        var versionText = match.Groups["version"].Value;
-                        if (ApplicationVersion.TryParse(versionText, out var version))
-                        {
-                            runtimes.Add(new InstalledRuntime(name, version!));
-                        }
+                        runtimes.Add(new InstalledRuntime(name, version!));
                     }
                 }
             }
@@ -117,16 +105,12 @@ internal sealed class RuntimeManager
                 Verb            = "runas"
             };
 
-            using (var process = Process.Start(startInfo))
-            {
-                if (process == null) throw new InvalidOperationException("Failed to start runtime installer.");
-                await Task.Run(process.WaitForExit, ct).ConfigureAwait(false);
+            var result = await ProcessExecution.RunAsync(startInfo, ct).ConfigureAwait(false);
 
-                // 3010 is "Restart Required", which we treat as success for now.
-                if (process.ExitCode != 0 && process.ExitCode != 3010)
-                {
-                    throw new InvalidOperationException($"Runtime installer failed with exit code {process.ExitCode}.");
-                }
+            // 3010 is "Restart Required", which we treat as success for now.
+            if (result.ExitCode != 0 && result.ExitCode != 3010)
+            {
+                throw new InvalidOperationException($"Runtime installer failed with exit code {result.ExitCode}.");
             }
         }
         finally
@@ -147,27 +131,20 @@ internal sealed class RuntimeManager
 
     private async Task DownloadFileAsync(string url, string targetPath, string version, IProgress<InstallationProgress> progress, CancellationToken ct)
     {
-        using (var client = new HttpClient())
+        using (var response = await UpdaterHttpClient.Shared.GetAsync(url, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false))
         {
-            client.DefaultRequestHeaders.UserAgent.ParseAdd("Updater/1.0");
-            using (var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false))
-            {
-                response.EnsureSuccessStatusCode();
-                var contentLength = response.Content.Headers.ContentLength;
+            response.EnsureSuccessStatusCode();
+            var contentLength = response.Content.Headers.ContentLength;
 
-                using (var responseStream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
-                using (var fileStream = new FileStream(targetPath, FileMode.Create, FileAccess.Write, FileShare.None))
-                {
-                    var  buffer    = new byte[81920];
-                    long totalRead = 0;
-                    int  bytesRead;
-                    while ((bytesRead = await responseStream.ReadAsync(buffer, 0, buffer.Length, ct).ConfigureAwait(false)) > 0)
-                    {
-                        await fileStream.WriteAsync(buffer, 0, bytesRead, ct).ConfigureAwait(false);
-                        totalRead += bytesRead;
-                        progress.Report(new InstallationProgress(InstallationPhase.DownloadingRuntime, version, totalRead, contentLength));
-                    }
-                }
+            using (var responseStream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
+            {
+                await DownloadTransfer.CopyToFileAsync(
+                                          responseStream,
+                                          targetPath,
+                                          contentLength,
+                                          ct,
+                                          (totalRead, total) => progress.Report(new InstallationProgress(InstallationPhase.DownloadingRuntime, version, totalRead, total)))
+                                      .ConfigureAwait(false);
             }
         }
     }

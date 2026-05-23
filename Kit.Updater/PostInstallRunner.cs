@@ -48,40 +48,11 @@ internal sealed class PostInstallRunner
             startInfo.Arguments = arguments;
         }
 
-        using (var process = new Process())
+        var result = await ProcessExecution.RunAsync(startInfo, cancellationToken).ConfigureAwait(false);
+        if (result.ExitCode != 0)
         {
-            process.StartInfo           = startInfo;
-            process.EnableRaisingEvents = true;
-            process.Start();
-
-            var outputTask = process.StandardOutput.ReadToEndAsync();
-            var errorTask  = process.StandardError.ReadToEndAsync();
-
-            using (cancellationToken.Register(() =>
-                   {
-                       try
-                       {
-                           if (!process.HasExited)
-                           {
-                               process.Kill();
-                           }
-                       }
-                       catch
-                       {
-                           /*Ignored*/
-                       }
-                   }))
-            {
-                await WaitForExitAsync(process, cancellationToken).ConfigureAwait(false);
-            }
-
-            var output = await outputTask.ConfigureAwait(false);
-            var error  = await errorTask.ConfigureAwait(false);
-            if (process.ExitCode != 0)
-            {
-                var details = string.IsNullOrWhiteSpace(error) ? output : error;
-                throw new InvalidOperationException("The post-install command failed." + (string.IsNullOrWhiteSpace(details) ? string.Empty : Environment.NewLine + details.Trim()));
-            }
+            var details = string.IsNullOrWhiteSpace(result.StandardError) ? result.StandardOutput : result.StandardError;
+            throw new InvalidOperationException("The post-install command failed." + (string.IsNullOrWhiteSpace(details) ? string.Empty : Environment.NewLine + details.Trim()));
         }
     }
 
@@ -115,32 +86,6 @@ internal sealed class PostInstallRunner
         {
             useCommandShell = true;
         }
-    }
-
-    private static Task WaitForExitAsync(Process process, CancellationToken ct)
-    {
-        var taskCompletionSource = new TaskCompletionSource<bool>();
-
-        EventHandler handler = delegate
-        {
-            taskCompletionSource.TrySetResult(true);
-        };
-
-        process.Exited += handler;
-
-        if (process.HasExited)
-        {
-            process.Exited -= handler;
-            return Task.CompletedTask;
-        }
-
-        ct.Register(() => taskCompletionSource.TrySetCanceled(ct));
-
-        return taskCompletionSource.Task.ContinueWith(task =>
-        {
-            process.Exited -= handler;
-            return task;
-        }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default).Unwrap();
     }
 
     private static string ReplaceTemplateTokens(string? value, string version, string appDirectory)

@@ -59,66 +59,11 @@ internal sealed class ArchiveExtractor
             RedirectStandardError  = true
         };
 
-        using (var process = new Process())
+        var result = await ProcessExecution.RunAsync(startInfo, ct).ConfigureAwait(false);
+        if (result.ExitCode != 0)
         {
-            process.StartInfo           = startInfo;
-            process.EnableRaisingEvents = true;
-            process.Start();
-
-            var outputTask = process.StandardOutput.ReadToEndAsync();
-            var errorTask  = process.StandardError.ReadToEndAsync();
-            using (ct.Register(() =>
-                   {
-                       try
-                       {
-                           if (!process.HasExited)
-                           {
-                               process.Kill();
-                           }
-                       }
-                       catch
-                       {
-                           /*Ignored*/
-                       }
-                   }))
-            {
-                await WaitForExitAsync(process, ct).ConfigureAwait(false);
-            }
-
-            var output = await outputTask.ConfigureAwait(false);
-            var error  = await errorTask.ConfigureAwait(false);
-
-            if (process.ExitCode != 0)
-            {
-                var details = string.IsNullOrWhiteSpace(error) ? output : error;
-                throw new InvalidOperationException("7za.exe failed to extract the update archive." + (string.IsNullOrWhiteSpace(details) ? string.Empty : Environment.NewLine + details.Trim()));
-            }
+            var details = string.IsNullOrWhiteSpace(result.StandardError) ? result.StandardOutput : result.StandardError;
+            throw new InvalidOperationException("7za.exe failed to extract the update archive." + (string.IsNullOrWhiteSpace(details) ? string.Empty : Environment.NewLine + details.Trim()));
         }
-    }
-
-    private static Task WaitForExitAsync(Process process, CancellationToken ct)
-    {
-        var taskCompletionSource = new TaskCompletionSource<bool>();
-
-        EventHandler handler = delegate
-        {
-            taskCompletionSource.TrySetResult(true);
-        };
-
-        process.Exited += handler;
-
-        if (process.HasExited)
-        {
-            process.Exited -= handler;
-            return Task.CompletedTask;
-        }
-
-        ct.Register(() => taskCompletionSource.TrySetCanceled(ct));
-
-        return taskCompletionSource.Task.ContinueWith(task =>
-        {
-            process.Exited -= handler;
-            return task;
-        }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default).Unwrap();
     }
 }
