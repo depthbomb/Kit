@@ -1,4 +1,5 @@
 ﻿using Shared;
+using System.Net.Http;
 using System.Web.Script.Serialization;
 
 namespace Kit.Updater;
@@ -46,48 +47,16 @@ internal sealed class JsonUpdateSource : IUpdateSource
             throw new InvalidOperationException("The JSON update source returned an invalid or empty manifest.");
         }
 
-        if (!ApplicationVersion.TryParse(manifest.Version, out var version))
+        var baseUri = new Uri(_configuration.Url);
+        return ReleaseManifestResolver.ResolveAvailableUpdate(manifest, fileName =>
         {
-            throw new InvalidOperationException("The release manifest did not provide a valid version.");
-        }
-
-        if (manifest.Download == null || string.IsNullOrWhiteSpace(manifest.Download.FileName))
-        {
-            throw new InvalidOperationException("The release manifest did not provide a download filename.");
-        }
-
-        // For JSON sources, we assume the download URL is either absolute or relative to the manifest URL.
-        var downloadUrl = manifest.Download.FileName;
-        if (!Uri.IsWellFormedUriString(downloadUrl, UriKind.Absolute))
-        {
-            var baseUri = new Uri(_configuration.Url);
-            downloadUrl = new Uri(baseUri, downloadUrl).ToString();
-        }
-
-        var resolvedVersion = version!;
-        var isUpdaterUpdate = manifest.UpdaterUpdateRequired || string.Equals(manifest.Download.Kind, "installer", StringComparison.OrdinalIgnoreCase);
-
-        // Resolve the application package as a fallback URL/hash for after an updater-installer update.
-        string? appPackageUrl  = null;
-        string? appPackageSha256 = null;
-        if (isUpdaterUpdate && !string.IsNullOrWhiteSpace(manifest.ApplicationPackage.FileName))
-        {
-            var appPackageFileName = manifest.ApplicationPackage.FileName;
-            if (Uri.IsWellFormedUriString(appPackageFileName, UriKind.Absolute))
+            if (Uri.IsWellFormedUriString(fileName, UriKind.Absolute))
             {
-                appPackageUrl = appPackageFileName;
-            }
-            else
-            {
-                var baseUri = new Uri(_configuration.Url);
-                appPackageUrl = new Uri(baseUri, appPackageFileName).ToString();
+                return fileName;
             }
 
-            appPackageSha256 = manifest.ApplicationPackage.Sha256;
-        }
-
-        return new AvailableUpdate(resolvedVersion, downloadUrl, resolvedVersion.NormalizedValue, manifest.Download.Sha256, isUpdaterUpdate,
-                                   appPackageUrl, appPackageSha256);
+            return new Uri(baseUri, fileName).ToString();
+        });
     }
 }
 
@@ -146,49 +115,20 @@ internal sealed class GitHubUpdateSource : IUpdateSource
 
             var manifestJson = await UpdateSourceHttp.GetStringAsync(manifestUrl!, ct).ConfigureAwait(false);
             var manifest     = serializer.Deserialize<ReleaseManifest>(manifestJson);
-
-            if (manifest == null || !ApplicationVersion.TryParse(manifest.Version, out var version))
+            if (manifest == null)
             {
                 continue;
             }
 
-            var downloadFileName = manifest.Download.FileName;
-            if (string.IsNullOrWhiteSpace(downloadFileName))
+            try
             {
-                continue;
-            }
-
-            var targetAsset = assetList.FirstOrDefault(a => string.Equals(UpdateSourceParsing.ReadString(a, "name"), downloadFileName, StringComparison.OrdinalIgnoreCase));
-            if (targetAsset == null)
-            {
-                continue;
-            }
-
-            var downloadUrl = UpdateSourceParsing.ReadString(targetAsset, "browser_download_url");
-            if (string.IsNullOrWhiteSpace(downloadUrl))
-            {
-                continue;
-            }
-
-            var resolvedVersion = version!;
-            var isUpdaterUpdate = manifest.UpdaterUpdateRequired || string.Equals(manifest.Download.Kind, "installer", StringComparison.OrdinalIgnoreCase);
-
-            // Resolve the application package URL from the release assets as a fallback for after an updater-installer
-            // update has been applied.
-            string? appPackageUrl    = null;
-            string? appPackageSha256 = null;
-            if (isUpdaterUpdate && !string.IsNullOrWhiteSpace(manifest.ApplicationPackage.FileName))
-            {
-                var appPackageAsset = assetList.FirstOrDefault(a => string.Equals(UpdateSourceParsing.ReadString(a, "name"), manifest.ApplicationPackage.FileName, StringComparison.OrdinalIgnoreCase));
-                if (appPackageAsset != null)
+                return ReleaseManifestResolver.ResolveAvailableUpdate(manifest, fileName =>
                 {
-                    appPackageUrl    = UpdateSourceParsing.ReadString(appPackageAsset, "browser_download_url");
-                    appPackageSha256 = manifest.ApplicationPackage.Sha256;
-                }
+                    var targetAsset = assetList.FirstOrDefault(a => string.Equals(UpdateSourceParsing.ReadString(a, "name"), fileName, StringComparison.OrdinalIgnoreCase));
+                    return targetAsset == null ? null : UpdateSourceParsing.ReadString(targetAsset, "browser_download_url");
+                });
             }
-
-            return new AvailableUpdate(resolvedVersion, downloadUrl!, resolvedVersion.NormalizedValue, manifest.Download.Sha256, isUpdaterUpdate,
-                                       appPackageUrl, appPackageSha256);
+            catch (InvalidOperationException) { }
         }
 
         return null;
@@ -199,7 +139,7 @@ internal static class UpdateSourceHttp
 {
     public static async Task<string> GetStringAsync(string url, CancellationToken ct)
     {
-        using (var response = await UpdaterHttpClient.Shared.GetAsync(url, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false))
+        using (var response = await UpdaterHttpClient.Shared.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false))
         {
             response.EnsureSuccessStatusCode();
             return await response.Content.ReadAsStringAsync().ConfigureAwait(false);
