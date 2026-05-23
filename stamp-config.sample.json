@@ -1,0 +1,78 @@
+{
+  "applicationName": "My App",
+  "initialVersion": "1.0.0",
+  "launchExecutable": "MyApp.exe",
+  "launchArguments": "",
+  "bannerImagePath": "assets/banner.png",
+  "windowIconPath": "assets/app.ico",
+  "requiresAppRuntime": false,
+  "appearance": {
+    "useDarkMode": true,
+    "useDarkTitleBar": true,
+    "backgroundColor": "#202020",
+    "foregroundColor": "#f5f5f5",
+    "secondaryTextColor": "#d2d2d2",
+    "bannerBackgroundColor": "#161616"
+  },
+  "text": {
+    "windowTitle": "{ApplicationName} Launcher",
+    "title": "{ApplicationName}",
+    "initialStatus": "Starting...",
+    "loadingConfigurationStatus": "Loading updater configuration...",
+    "resolvingInstallationStatus": "Resolving installed application version...",
+    "checkingForUpdatesStatus": "Checking for updates...",
+    "noUpdatesLaunchingStatus": "No updates found. Launching {ApplicationName}...",
+    "updateAlreadyDownloadedStatus": "Version {Version} is already downloaded. Launching it now...",
+    "updatePromptBody": "A newer version of {ApplicationName} is available ({Version}).\r\n\r\nChoose Yes to download and install it now, or No to ignore this update and launch the current version.",
+    "updatePromptTitle": "{ApplicationName} Update Available",
+    "launchingCurrentVersionStatus": "Launching the current version...",
+    "downloadingVersionStatus": "Downloading version {Version}...",
+    "downloadingProgressStatus": "Downloading update... {Percent}%",
+    "launchingUpdatedVersionStatus": "Launching version {Version}...",
+    "errorDialogTitle": "Updater Error",
+    "downloadUpdateButtonText": "Download update",
+    "launchCurrentVersionButtonText": "Launch current",
+    "skipVersionButtonText": "Skip this version",
+    "cancelButtonText": "Cancel",
+    "verifyingIntegrityStatus": "Verifying download...",
+    "extractingArchiveStatus": "Extracting archive...",
+    "preparingFilesStatus": "Preparing files...",
+    "validatingInstallationStatus": "Validating installation...",
+    "runningPostInstallStatus": "Running post-install steps...",
+    "finalizingInstallationStatus": "Finalizing installation...",
+    "cleaningUpStatus": "Cleaning up temporary files...",
+    "applicationAlreadyRunningStatus": "{ApplicationName} is already running.",
+    "applicationAlreadyRunningDialogTitle": "{ApplicationName} is running",
+    "applicationAlreadyRunningDialogBody": "{ApplicationName} is currently running. Close it before installing version {Version}, then choose Retry. Choose Cancel to stop the update.",
+    "checkingRuntimesStatus": "Checking for required .NET runtimes...",
+    "installingRuntimeStatus": "Installing {RuntimeName} {Version}...",
+    "downloadingRuntimeProgressStatus": "Downloading .NET runtime... {Percent}%",
+    "runtimeRequirementPromptTitle": ".NET Runtime Required",
+    "runtimeRequirementPromptBody": "This application requires the following .NET runtimes:\r\n\r\n{RuntimeNames}\r\n\r\nWould you like to download and install them now?"
+  },
+  "installation": {
+    "requireIntegrityVerification": true,
+    "processName": "MyApp",
+    "keepLastVersions": 3,
+    "extractionLayout": "auto",
+    "postInstallCommand": "postinstall.cmd",
+    "postInstallArguments": "\"{AppDirectory}\" {Version}",
+    "allowFreshInstall": true,
+    "compressFiles": true
+  },
+  "updatePolicy": {
+    "mode": "optional",
+    "minimumVersion": ""
+  },
+  "requiredRuntimes": [
+    {
+      "name": "Microsoft.WindowsDesktop.App",
+      "version": "6.0.0",
+      "type": "windowsdesktop-runtime"
+    }
+  ],
+  "updateSource": {
+    "type": "github",
+    "repository": "owner/repo"
+  }
+}
