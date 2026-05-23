@@ -8,7 +8,7 @@ internal interface IUpdaterView
 {
     void ApplyConfiguration(UpdaterConfiguration configuration);
 
-    void SetStatus(string key, string fallback, bool indeterminate, string? version = null, int? percent = null, string? processName = null, string? runtimeNames = null, string? runtimeName = null);
+    void SetStatus(UiTextKey key, string fallback, bool indeterminate, string? version = null, int? percent = null, string? processName = null, string? runtimeNames = null, string? runtimeName = null);
 
     bool ConfirmRuntimeInstallation(IReadOnlyList<RequiredRuntimeConfiguration> missingRuntimes);
 
@@ -31,7 +31,7 @@ internal sealed class UpdaterWorkflow
     {
         try
         {
-            view.SetStatus("LoadingConfigurationStatus", "Loading updater configuration...", true);
+            view.SetStatus(UiTextKey.LoadingConfigurationStatus, "Loading updater configuration...", true);
 
             var executablePath    = Assembly.GetExecutingAssembly().Location;
             var configurationJson = StampPayload.ReadConfigurationJson(executablePath);
@@ -42,13 +42,13 @@ internal sealed class UpdaterWorkflow
 
             UpdaterConfigurationValidator.Validate(configuration);
             view.ApplyConfiguration(configuration);
-            view.SetStatus("LoadingConfigurationStatus", "Loading updater configuration...", true);
+            view.SetStatus(UiTextKey.LoadingConfigurationStatus, "Loading updater configuration...", true);
 
             var progress = new Progress<InstallationProgress>(view.ReportProgress);
 
             if (configuration.RequiresAppRuntime)
             {
-                view.SetStatus("CheckingAppRuntimesStatus", "Checking Windows App Runtime...", true);
+                view.SetStatus(UiTextKey.CheckingAppRuntimesStatus, "Checking Windows App Runtime...", true);
 
                 if (!AppRuntimeChecker.IsWindowsAppRuntimeInstalled())
                 {
@@ -58,14 +58,14 @@ internal sealed class UpdaterWorkflow
                         return;
                     }
 
-                    view.SetStatus("InstallingAppRuntimeStatus", "Installing Windows App Runtime...", false);
+                    view.SetStatus(UiTextKey.InstallingAppRuntimeStatus, "Installing Windows App Runtime...", false);
                     await AppRuntimeChecker.DownloadAndInstallAppRuntimeAsync(progress, ct);
                 }
             }
 
             var runtimeManager = new RuntimeManager(configuration);
 
-            view.SetStatus("CheckingRuntimesStatus", "Checking for required .NET runtimes...", true);
+            view.SetStatus(UiTextKey.CheckingRuntimesStatus, "Checking for required .NET runtimes...", true);
 
             var missingRuntimes = await runtimeManager.GetMissingRuntimesAsync(ct);
             if (missingRuntimes.Count > 0)
@@ -78,17 +78,17 @@ internal sealed class UpdaterWorkflow
 
                 foreach (var missing in missingRuntimes)
                 {
-                    view.SetStatus("InstallingRuntimeStatus", "Installing {RuntimeName} {Version}...", false, missing.Version, runtimeName: missing.Name);
+                    view.SetStatus(UiTextKey.InstallingRuntimeStatus, "Installing {RuntimeName} {Version}...", false, missing.Version, runtimeName: missing.Name);
                     await runtimeManager.DownloadAndInstallRuntimeAsync(missing, progress, ct);
                 }
             }
 
             var runtime = new UpdaterRuntime(configuration, AppDomain.CurrentDomain.BaseDirectory);
 
-            view.SetStatus("ResolvingInstallationStatus", "Resolving installed application version...", true);
+            view.SetStatus(UiTextKey.ResolvingInstallationStatus, "Resolving installed application version...", true);
             var currentInstallation = runtime.ResolveCurrentInstallation();
 
-            view.SetStatus("CheckingForUpdatesStatus", "Checking for updates...", true);
+            view.SetStatus(UiTextKey.CheckingForUpdatesStatus, "Checking for updates...", true);
             var updateResult = await runtime.CheckForUpdateAsync(currentInstallation, ct);
 
             EnsureUpdatePolicySatisfied(configuration.UpdatePolicy, currentInstallation, updateResult.AvailableUpdate);
@@ -102,11 +102,11 @@ internal sealed class UpdaterWorkflow
 
                 if (updateResult.WasSkipped)
                 {
-                    view.SetStatus("LaunchingCurrentVersionStatus", "Launching the current version...", true);
+                    view.SetStatus(UiTextKey.LaunchingCurrentVersionStatus, "Launching the current version...", true);
                 }
                 else
                 {
-                    view.SetStatus("NoUpdatesLaunchingStatus", "No updates found. Launching {ApplicationName}...", true);
+                    view.SetStatus(UiTextKey.NoUpdatesLaunchingStatus, "No updates found. Launching {ApplicationName}...", true);
                 }
 
                 await LaunchAsync(view, runtime, currentInstallation, ct);
@@ -115,7 +115,7 @@ internal sealed class UpdaterWorkflow
 
             if (updateResult.AlreadyInstalled)
             {
-                view.SetStatus("UpdateAlreadyDownloadedStatus", "Version {Version} is already downloaded. Launching it now...", true, updateResult.AvailableUpdate.DisplayVersion);
+                view.SetStatus(UiTextKey.UpdateAlreadyDownloadedStatus, "Version {Version} is already downloaded. Launching it now...", true, updateResult.AvailableUpdate.DisplayVersion);
                 await LaunchAsync(view, runtime, updateResult.LaunchInstallation, ct);
                 return;
             }
@@ -129,12 +129,12 @@ internal sealed class UpdaterWorkflow
                         view.CloseWindow();
                         return;
                     case UpdatePromptChoice.LaunchCurrent:
-                        view.SetStatus("LaunchingCurrentVersionStatus", "Launching the current version...", true);
+                        view.SetStatus(UiTextKey.LaunchingCurrentVersionStatus, "Launching the current version...", true);
                         await LaunchAsync(view, runtime, currentInstallation, ct);
                         return;
                     case UpdatePromptChoice.SkipVersion:
                         runtime.SkipVersion(updateResult.AvailableUpdate.Version.NormalizedValue);
-                        view.SetStatus("LaunchingCurrentVersionStatus", "Launching the current version...", true);
+                        view.SetStatus(UiTextKey.LaunchingCurrentVersionStatus, "Launching the current version...", true);
                         await LaunchAsync(view, runtime, currentInstallation, ct);
                         return;
                 }
@@ -146,10 +146,10 @@ internal sealed class UpdaterWorkflow
                 return;
             }
 
-            view.SetStatus("DownloadingVersionStatus", "Downloading version {Version}...", false, updateResult.AvailableUpdate.DisplayVersion);
+            view.SetStatus(UiTextKey.DownloadingVersionStatus, "Downloading version {Version}...", false, updateResult.AvailableUpdate.DisplayVersion);
             var installedUpdate = await runtime.DownloadAndInstallUpdateAsync(updateResult.AvailableUpdate, progress, ct);
 
-            view.SetStatus("LaunchingUpdatedVersionStatus", "Launching version {Version}...", true, installedUpdate.Version.NormalizedValue);
+            view.SetStatus(UiTextKey.LaunchingUpdatedVersionStatus, "Launching version {Version}...", true, installedUpdate.Version.NormalizedValue);
             await LaunchAsync(view, runtime, installedUpdate, ct);
         }
         catch (OperationCanceledException)
@@ -191,7 +191,7 @@ internal sealed class UpdaterWorkflow
 
         if (runtime.IsApplicationRunning())
         {
-            view.SetStatus("ApplicationAlreadyRunningStatus", "{ApplicationName} is already running.", true, installation.Version.NormalizedValue, processName: runtime.GetApplicationProcessName());
+            view.SetStatus(UiTextKey.ApplicationAlreadyRunningStatus, "{ApplicationName} is already running.", true, installation.Version.NormalizedValue, processName: runtime.GetApplicationProcessName());
             await Task.Delay(500, ct);
             view.CloseWindow();
             return;

@@ -14,6 +14,7 @@ internal sealed partial class MainForm : Form, IUpdaterView
     private const int DwmUseImmersiveDarkMode           = 20;
 
     private readonly CancellationTokenSource _cts;
+    private readonly UiTextResolver          _textResolver;
 
     public MainForm()
     {
@@ -21,6 +22,7 @@ internal sealed partial class MainForm : Form, IUpdaterView
 
         _cts           = new CancellationTokenSource();
         _configuration = new UpdaterConfiguration();
+        _textResolver  = new UiTextResolver();
     }
 
     protected override void OnShown(EventArgs e)
@@ -48,16 +50,16 @@ internal sealed partial class MainForm : Form, IUpdaterView
     {
         _configuration = configuration;
 
-        Text               = GetText("WindowTitle", "{ApplicationName} Bootstrapper");
-        c_TitleLabel.Text  = GetText("Title", "{ApplicationName}");
-        c_StatusLabel.Text = GetText("InitialStatus", "Starting...");
+        Text               = GetText(UiTextKey.WindowTitle, "{ApplicationName} Bootstrapper");
+        c_TitleLabel.Text  = GetText(UiTextKey.Title, "{ApplicationName}");
+        c_StatusLabel.Text = GetText(UiTextKey.InitialStatus, "Starting...");
 
         ApplyAppearance(configuration.Appearance);
         TryLoadWindowIcon(configuration.WindowIconBase64);
         TryLoadBanner(configuration.BannerImageBase64);
     }
 
-    public void SetStatus(string key, string fallback, bool indeterminate, string? version = null, int? percent = null, string? processName = null, string? runtimeNames = null, string? runtimeName = null)
+    public void SetStatus(UiTextKey key, string fallback, bool indeterminate, string? version = null, int? percent = null, string? processName = null, string? runtimeNames = null, string? runtimeName = null)
     {
         SetStatusMessage(GetText(key, fallback, version, percent, processName, runtimeNames, runtimeName), indeterminate);
     }
@@ -67,8 +69,8 @@ internal sealed partial class MainForm : Form, IUpdaterView
         var runtimeNames = string.Join(", ", missingRuntimes.Select(r => $"{r.Name} {r.Version}"));
         var result = MessageBox.Show(
             this,
-            GetText("RuntimeRequirementPromptBody", "This application requires the following .NET runtimes:\r\n\r\n{RuntimeNames}\r\n\r\nWould you like to download and install them now?", runtimeNames: runtimeNames),
-            GetText("RuntimeRequirementPromptTitle", ".NET Runtime Required"),
+            GetText(UiTextKey.RuntimeRequirementPromptBody, "This application requires the following .NET runtimes:\r\n\r\n{RuntimeNames}\r\n\r\nWould you like to download and install them now?", runtimeNames: runtimeNames),
+            GetText(UiTextKey.RuntimeRequirementPromptTitle, ".NET Runtime Required"),
             MessageBoxButtons.YesNo,
             MessageBoxIcon.Information);
 
@@ -79,8 +81,8 @@ internal sealed partial class MainForm : Form, IUpdaterView
     {
         var result = MessageBox.Show(
             this,
-            GetText("AppRuntimeRequirementPromptBody", "This application requires the Windows App Runtime to be installed.\r\n\r\nWould you like to download and install it now?"),
-            GetText("AppRuntimeRequirementPromptTitle", "Windows App Runtime Required"),
+            GetText(UiTextKey.AppRuntimeRequirementPromptBody, "This application requires the Windows App Runtime to be installed.\r\n\r\nWould you like to download and install it now?"),
+            GetText(UiTextKey.AppRuntimeRequirementPromptTitle, "Windows App Runtime Required"),
             MessageBoxButtons.YesNo,
             MessageBoxIcon.Information);
 
@@ -91,12 +93,12 @@ internal sealed partial class MainForm : Form, IUpdaterView
     {
         using (var prompt = new UpdatePromptForm(new UpdatePromptRequest
                {
-                   WindowTitle             = GetText("UpdatePromptTitle", "{ApplicationName} Update Available", update.DisplayVersion),
-                   Message                 = GetText("UpdatePromptBody", "A newer version of {ApplicationName} is available ({Version}).", update.DisplayVersion),
-                   DownloadButtonText      = GetText("DownloadUpdateButtonText", "Download update"),
-                   LaunchCurrentButtonText = GetText("LaunchCurrentVersionButtonText", "Launch current"),
-                   SkipVersionButtonText   = GetText("SkipVersionButtonText", "Skip this version"),
-                   CancelButtonText        = GetText("CancelButtonText", "Cancel"),
+                   WindowTitle             = GetText(UiTextKey.UpdatePromptTitle, "{ApplicationName} Update Available", update.DisplayVersion),
+                   Message                 = GetText(UiTextKey.UpdatePromptBody, "A newer version of {ApplicationName} is available ({Version}).", update.DisplayVersion),
+                   DownloadButtonText      = GetText(UiTextKey.DownloadUpdateButtonText, "Download update"),
+                   LaunchCurrentButtonText = GetText(UiTextKey.LaunchCurrentVersionButtonText, "Launch current"),
+                   SkipVersionButtonText   = GetText(UiTextKey.SkipVersionButtonText, "Skip this version"),
+                   CancelButtonText        = GetText(UiTextKey.CancelButtonText, "Cancel"),
                    AllowLaunchCurrent      = allowLaunchCurrent,
                    AllowSkipVersion        = allowSkipVersion
                }))
@@ -111,8 +113,8 @@ internal sealed partial class MainForm : Form, IUpdaterView
     {
         var answer = MessageBox.Show(
             this,
-            GetText("ApplicationAlreadyRunningDialogBody", "{ApplicationName} is currently running. Close it before installing version {Version}, then choose Retry. Choose Cancel to stop the update.", version, processName: processName),
-            GetText("ApplicationAlreadyRunningDialogTitle", "{ApplicationName} is running"),
+            GetText(UiTextKey.ApplicationAlreadyRunningDialogBody, "{ApplicationName} is currently running. Close it before installing version {Version}, then choose Retry. Choose Cancel to stop the update.", version, processName: processName),
+            GetText(UiTextKey.ApplicationAlreadyRunningDialogTitle, "{ApplicationName} is running"),
             MessageBoxButtons.RetryCancel,
             MessageBoxIcon.Warning);
         return answer == DialogResult.Retry;
@@ -125,7 +127,7 @@ internal sealed partial class MainForm : Form, IUpdaterView
 
     public void ShowError(string message, string titleFallback)
     {
-        MessageBox.Show(this, message, GetText("ErrorDialogTitle", titleFallback), MessageBoxButtons.OK, MessageBoxIcon.Error);
+        MessageBox.Show(this, message, GetText(UiTextKey.ErrorDialogTitle, titleFallback), MessageBoxButtons.OK, MessageBoxIcon.Error);
     }
 
     public void CloseWindow()
@@ -153,39 +155,40 @@ internal sealed partial class MainForm : Form, IUpdaterView
                     }
 
                     c_ProgressBar.Value = percentage;
-                    c_StatusLabel.Text  = GetText("DownloadingProgressStatus", "Downloading update... {Percent}%", progress.Version, percentage);
+                    c_StatusLabel.Text  = GetText(UiTextKey.DownloadingProgressStatus, "Downloading update... {Percent}%", progress.Version, percentage);
                 }
                 else
                 {
-                    SetStatusMessage(GetText("DownloadingVersionStatus", "Downloading version {Version}...", progress.Version), true);
+                    SetStatusMessage(GetText(UiTextKey.DownloadingVersionStatus, "Downloading version {Version}...", progress.Version), true);
                 }
+
                 break;
             case InstallationPhase.VerifyingIntegrity:
-                SetStatusMessage(GetText("VerifyingIntegrityStatus", "Verifying download..."), true);
+                SetStatusMessage(GetText(UiTextKey.VerifyingIntegrityStatus, "Verifying download..."), true);
                 break;
             case InstallationPhase.ExtractingArchive:
-                SetStatusMessage(GetText("ExtractingArchiveStatus", "Extracting archive..."), true);
+                SetStatusMessage(GetText(UiTextKey.ExtractingArchiveStatus, "Extracting archive..."), true);
                 break;
             case InstallationPhase.CompressingFiles:
-                SetStatusMessage(GetText("CompressingFilesStatus", "Compressing files..."), true);
+                SetStatusMessage(GetText(UiTextKey.CompressingFilesStatus, "Compressing files..."), true);
                 break;
             case InstallationPhase.PreparingFiles:
-                SetStatusMessage(GetText("PreparingFilesStatus", "Preparing files..."), true);
+                SetStatusMessage(GetText(UiTextKey.PreparingFilesStatus, "Preparing files..."), true);
                 break;
             case InstallationPhase.ValidatingInstallation:
-                SetStatusMessage(GetText("ValidatingInstallationStatus", "Validating installation..."), true);
+                SetStatusMessage(GetText(UiTextKey.ValidatingInstallationStatus, "Validating installation..."), true);
                 break;
             case InstallationPhase.RunningPostInstall:
-                SetStatusMessage(GetText("RunningPostInstallStatus", "Running post-install steps..."), true);
+                SetStatusMessage(GetText(UiTextKey.RunningPostInstallStatus, "Running post-install steps..."), true);
                 break;
             case InstallationPhase.FinalizingInstallation:
-                SetStatusMessage(GetText("FinalizingInstallationStatus", "Finalizing installation..."), true);
+                SetStatusMessage(GetText(UiTextKey.FinalizingInstallationStatus, "Finalizing installation..."), true);
                 break;
             case InstallationPhase.CleaningUp:
-                SetStatusMessage(GetText("CleaningUpStatus", "Cleaning up temporary files..."), true);
+                SetStatusMessage(GetText(UiTextKey.CleaningUpStatus, "Cleaning up temporary files..."), true);
                 break;
             case InstallationPhase.CheckingRuntimes:
-                SetStatusMessage(GetText("CheckingRuntimesStatus", "Checking for required .NET runtimes..."), true);
+                SetStatusMessage(GetText(UiTextKey.CheckingRuntimesStatus, "Checking for required .NET runtimes..."), true);
                 break;
             case InstallationPhase.DownloadingRuntime:
                 if (progress.TotalBytes is > 0)
@@ -197,15 +200,16 @@ internal sealed partial class MainForm : Form, IUpdaterView
                     }
 
                     c_ProgressBar.Value = percentage;
-                    c_StatusLabel.Text  = GetText("DownloadingRuntimeProgressStatus", "Downloading .NET runtime... {Percent}%", progress.Version, percentage);
+                    c_StatusLabel.Text  = GetText(UiTextKey.DownloadingRuntimeProgressStatus, "Downloading .NET runtime... {Percent}%", progress.Version, percentage);
                 }
                 else
                 {
-                    SetStatusMessage(GetText("InstallingRuntimeStatus", "Installing runtime version {Version}...", progress.Version), true);
+                    SetStatusMessage(GetText(UiTextKey.InstallingRuntimeStatus, "Installing runtime version {Version}...", progress.Version), true);
                 }
+
                 break;
             case InstallationPhase.InstallingRuntime:
-                SetStatusMessage(GetText("InstallingRuntimeStatus", "Installing runtime version {Version}...", progress.Version), true);
+                SetStatusMessage(GetText(UiTextKey.InstallingRuntimeStatus, "Installing runtime version {Version}...", progress.Version), true);
                 break;
             case InstallationPhase.DownloadingAppRuntime:
                 if (progress.TotalBytes is > 0)
@@ -217,15 +221,16 @@ internal sealed partial class MainForm : Form, IUpdaterView
                     }
 
                     c_ProgressBar.Value = percentage;
-                    c_StatusLabel.Text  = GetText("DownloadingAppRuntimeProgressStatus", "Downloading Windows App Runtime... {Percent}%", percent: percentage);
+                    c_StatusLabel.Text  = GetText(UiTextKey.DownloadingAppRuntimeProgressStatus, "Downloading Windows App Runtime... {Percent}%", percent: percentage);
                 }
                 else
                 {
-                    SetStatusMessage(GetText("InstallingAppRuntimeStatus", "Installing Windows App Runtime..."), true);
+                    SetStatusMessage(GetText(UiTextKey.InstallingAppRuntimeStatus, "Installing Windows App Runtime..."), true);
                 }
+
                 break;
             case InstallationPhase.InstallingAppRuntime:
-                SetStatusMessage(GetText("InstallingAppRuntimeStatus", "Installing Windows App Runtime..."), true);
+                SetStatusMessage(GetText(UiTextKey.InstallingAppRuntimeStatus, "Installing Windows App Runtime..."), true);
                 break;
         }
     }
@@ -250,62 +255,8 @@ internal sealed partial class MainForm : Form, IUpdaterView
         }
     }
 
-    private string GetText(string key, string fallback, string? version = null, int? percent = null, string? processName = null, string? runtimeNames = null, string? runtimeName = null)
-    {
-        var text = _configuration.Text;
-        var template = key switch
-        {
-            "CheckingRuntimesStatus"               => string.IsNullOrWhiteSpace(text.CheckingRuntimesStatus) ? fallback : text.CheckingRuntimesStatus,
-            "InstallingRuntimeStatus"              => string.IsNullOrWhiteSpace(text.InstallingRuntimeStatus) ? fallback : text.InstallingRuntimeStatus,
-            "DownloadingRuntimeProgressStatus"     => string.IsNullOrWhiteSpace(text.DownloadingRuntimeProgressStatus) ? fallback : text.DownloadingRuntimeProgressStatus,
-            "RuntimeRequirementPromptTitle"        => string.IsNullOrWhiteSpace(text.RuntimeRequirementPromptTitle) ? fallback : text.RuntimeRequirementPromptTitle,
-            "RuntimeRequirementPromptBody"         => string.IsNullOrWhiteSpace(text.RuntimeRequirementPromptBody) ? fallback : text.RuntimeRequirementPromptBody,
-            "CheckingAppRuntimesStatus"            => string.IsNullOrWhiteSpace(text.CheckingAppRuntimesStatus) ? fallback : text.CheckingAppRuntimesStatus,
-            "InstallingAppRuntimeStatus"           => string.IsNullOrWhiteSpace(text.InstallingAppRuntimeStatus) ? fallback : text.InstallingAppRuntimeStatus,
-            "DownloadingAppRuntimeProgressStatus"  => string.IsNullOrWhiteSpace(text.DownloadingAppRuntimeProgressStatus) ? fallback : text.DownloadingAppRuntimeProgressStatus,
-            "AppRuntimeRequirementPromptTitle"     => string.IsNullOrWhiteSpace(text.AppRuntimeRequirementPromptTitle) ? fallback : text.AppRuntimeRequirementPromptTitle,
-            "AppRuntimeRequirementPromptBody"      => string.IsNullOrWhiteSpace(text.AppRuntimeRequirementPromptBody) ? fallback : text.AppRuntimeRequirementPromptBody,
-            "WindowTitle"                          => string.IsNullOrWhiteSpace(text.WindowTitle) ? fallback : text.WindowTitle,
-            "Title"                                => string.IsNullOrWhiteSpace(text.Title) ? fallback : text.Title,
-            "InitialStatus"                        => string.IsNullOrWhiteSpace(text.InitialStatus) ? fallback : text.InitialStatus,
-            "LoadingConfigurationStatus"           => string.IsNullOrWhiteSpace(text.LoadingConfigurationStatus) ? fallback : text.LoadingConfigurationStatus,
-            "ResolvingInstallationStatus"          => string.IsNullOrWhiteSpace(text.ResolvingInstallationStatus) ? fallback : text.ResolvingInstallationStatus,
-            "CheckingForUpdatesStatus"             => string.IsNullOrWhiteSpace(text.CheckingForUpdatesStatus) ? fallback : text.CheckingForUpdatesStatus,
-            "NoUpdatesLaunchingStatus"             => string.IsNullOrWhiteSpace(text.NoUpdatesLaunchingStatus) ? fallback : text.NoUpdatesLaunchingStatus,
-            "UpdateAlreadyDownloadedStatus"        => string.IsNullOrWhiteSpace(text.UpdateAlreadyDownloadedStatus) ? fallback : text.UpdateAlreadyDownloadedStatus,
-            "UpdatePromptBody"                     => string.IsNullOrWhiteSpace(text.UpdatePromptBody) ? fallback : text.UpdatePromptBody,
-            "UpdatePromptTitle"                    => string.IsNullOrWhiteSpace(text.UpdatePromptTitle) ? fallback : text.UpdatePromptTitle,
-            "LaunchingCurrentVersionStatus"        => string.IsNullOrWhiteSpace(text.LaunchingCurrentVersionStatus) ? fallback : text.LaunchingCurrentVersionStatus,
-            "DownloadingVersionStatus"             => string.IsNullOrWhiteSpace(text.DownloadingVersionStatus) ? fallback : text.DownloadingVersionStatus,
-            "DownloadingProgressStatus"            => string.IsNullOrWhiteSpace(text.DownloadingProgressStatus) ? fallback : text.DownloadingProgressStatus,
-            "LaunchingUpdatedVersionStatus"        => string.IsNullOrWhiteSpace(text.LaunchingUpdatedVersionStatus) ? fallback : text.LaunchingUpdatedVersionStatus,
-            "ErrorDialogTitle"                     => string.IsNullOrWhiteSpace(text.ErrorDialogTitle) ? fallback : text.ErrorDialogTitle,
-            "DownloadUpdateButtonText"             => string.IsNullOrWhiteSpace(text.DownloadUpdateButtonText) ? fallback : text.DownloadUpdateButtonText,
-            "LaunchCurrentVersionButtonText"       => string.IsNullOrWhiteSpace(text.LaunchCurrentVersionButtonText) ? fallback : text.LaunchCurrentVersionButtonText,
-            "SkipVersionButtonText"                => string.IsNullOrWhiteSpace(text.SkipVersionButtonText) ? fallback : text.SkipVersionButtonText,
-            "CancelButtonText"                     => string.IsNullOrWhiteSpace(text.CancelButtonText) ? fallback : text.CancelButtonText,
-            "VerifyingIntegrityStatus"             => string.IsNullOrWhiteSpace(text.VerifyingIntegrityStatus) ? fallback : text.VerifyingIntegrityStatus,
-            "ExtractingArchiveStatus"              => string.IsNullOrWhiteSpace(text.ExtractingArchiveStatus) ? fallback : text.ExtractingArchiveStatus,
-            "CompressingFilesStatus"               => string.IsNullOrWhiteSpace(text.CompressingFilesStatus) ? fallback : text.CompressingFilesStatus,
-            "PreparingFilesStatus"                 => string.IsNullOrWhiteSpace(text.PreparingFilesStatus) ? fallback : text.PreparingFilesStatus,
-            "ValidatingInstallationStatus"         => string.IsNullOrWhiteSpace(text.ValidatingInstallationStatus) ? fallback : text.ValidatingInstallationStatus,
-            "RunningPostInstallStatus"             => string.IsNullOrWhiteSpace(text.RunningPostInstallStatus) ? fallback : text.RunningPostInstallStatus,
-            "FinalizingInstallationStatus"         => string.IsNullOrWhiteSpace(text.FinalizingInstallationStatus) ? fallback : text.FinalizingInstallationStatus,
-            "CleaningUpStatus"                     => string.IsNullOrWhiteSpace(text.CleaningUpStatus) ? fallback : text.CleaningUpStatus,
-            "ApplicationAlreadyRunningStatus"      => string.IsNullOrWhiteSpace(text.ApplicationAlreadyRunningStatus) ? fallback : text.ApplicationAlreadyRunningStatus,
-            "ApplicationAlreadyRunningDialogTitle" => string.IsNullOrWhiteSpace(text.ApplicationAlreadyRunningDialogTitle) ? fallback : text.ApplicationAlreadyRunningDialogTitle,
-            "ApplicationAlreadyRunningDialogBody"  => string.IsNullOrWhiteSpace(text.ApplicationAlreadyRunningDialogBody) ? fallback : text.ApplicationAlreadyRunningDialogBody,
-            _                                      => fallback
-        };
-
-        return template
-               .Replace("{ApplicationName}", _configuration.ApplicationName)
-               .Replace("{Version}", version ?? string.Empty)
-               .Replace("{Percent}", percent.HasValue ? percent.Value.ToString() : string.Empty)
-               .Replace("{ProcessName}", processName   ?? string.Empty)
-               .Replace("{RuntimeNames}", runtimeNames ?? string.Empty)
-               .Replace("{RuntimeName}", runtimeName   ?? string.Empty);
-    }
+    private string GetText(UiTextKey key, string fallback, string? version = null, int? percent = null, string? processName = null, string? runtimeNames = null, string? runtimeName = null)
+        => _textResolver.Resolve(_configuration, key, fallback, version, percent, processName, runtimeNames, runtimeName);
 
     private void ApplyAppearance(AppearanceConfiguration appearance)
     {
@@ -347,7 +298,10 @@ internal sealed partial class MainForm : Form, IUpdaterView
                 DwmSetWindowAttribute(Handle, DwmUseImmersiveDarkModeBefore20H1, ref enabled, sizeof(int));
             }
         }
-        catch { /*Ignored*/ }
+        catch
+        {
+            /*Ignored*/
+        }
     }
 
     private static Color ResolveColor(string configuredColor, Color fallback)
