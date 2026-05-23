@@ -16,6 +16,11 @@ internal sealed class RuntimeManager
 
     public async Task<List<RequiredRuntimeConfiguration>> GetMissingRuntimesAsync(CancellationToken ct)
     {
+        if (_configuration.RequiredRuntimes.Count == 0)
+        {
+            return [];
+        }
+
         var installedRuntimes = await GetInstalledRuntimesAsync(ct).ConfigureAwait(false);
         var missingRuntimes   = new List<RequiredRuntimeConfiguration>();
 
@@ -29,7 +34,6 @@ internal sealed class RuntimeManager
             var isInstalled = installedRuntimes.Any(installed =>
                 string.Equals(installed.Name, required.Name, StringComparison.OrdinalIgnoreCase) &&
                 installed.Version.CompareTo(requiredVersion) >= 0);
-
             if (!isInstalled)
             {
                 missingRuntimes.Add(required);
@@ -194,4 +198,3 @@ internal sealed class RuntimeManager
         public ApplicationVersion Version { get; }
     }
 }
-
