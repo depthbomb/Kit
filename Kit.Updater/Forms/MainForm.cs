@@ -8,10 +8,10 @@ internal sealed partial class MainForm : Form, IUpdaterView
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int attributeValue, int attributeSize);
 
-    private UpdaterConfiguration _configuration;
-
     private const int DwmUseImmersiveDarkModeBefore20H1 = 19;
     private const int DwmUseImmersiveDarkMode           = 20;
+
+    private UpdaterConfiguration _configuration;
 
     private readonly CancellationTokenSource _cts;
     private readonly UiTextResolver          _textResolver;
@@ -23,27 +23,6 @@ internal sealed partial class MainForm : Form, IUpdaterView
         _cts           = new CancellationTokenSource();
         _configuration = new UpdaterConfiguration();
         _textResolver  = new UiTextResolver();
-    }
-
-    protected override void OnShown(EventArgs e)
-    {
-        base.OnShown(e);
-
-        _ = RunWorkflowAsync();
-    }
-
-    protected override void OnFormClosing(FormClosingEventArgs e)
-    {
-        _cts.Cancel();
-        _cts.Dispose();
-
-        base.OnFormClosing(e);
-    }
-
-    private Task RunWorkflowAsync()
-    {
-        var workflow = new UpdaterWorkflow();
-        return workflow.RunAsync(this, _cts.Token);
     }
 
     public void ApplyConfiguration(UpdaterConfiguration configuration)
@@ -59,7 +38,14 @@ internal sealed partial class MainForm : Form, IUpdaterView
         TryLoadBanner(configuration.BannerImageBase64);
     }
 
-    public void SetStatus(UiTextKey key, string fallback, bool indeterminate, string? version = null, int? percent = null, string? processName = null, string? runtimeNames = null, string? runtimeName = null)
+    public void SetStatus(UiTextKey key,
+                          string    fallback,
+                          bool      indeterminate,
+                          string?   version      = null,
+                          int?      percent      = null,
+                          string?   processName  = null,
+                          string?   runtimeNames = null,
+                          string?   runtimeName  = null)
     {
         SetStatusMessage(GetText(key, fallback, version, percent, processName, runtimeNames, runtimeName), indeterminate);
     }
@@ -89,18 +75,18 @@ internal sealed partial class MainForm : Form, IUpdaterView
         return result == DialogResult.Yes;
     }
 
-    public UpdatePromptChoice PromptForUpdate(AvailableUpdate update, bool allowLaunchCurrent, bool allowSkipVersion)
+    public UpdatePromptChoice PromptForUpdate(AvailableUpdate update, bool allowSkipForSession, bool allowSkipVersion)
     {
         using (var prompt = new UpdatePromptForm(new UpdatePromptRequest
                {
-                   WindowTitle             = GetText(UiTextKey.UpdatePromptTitle, "{ApplicationName} Update Available", update.DisplayVersion),
-                   Message                 = GetText(UiTextKey.UpdatePromptBody, "A newer version of {ApplicationName} is available ({Version}).", update.DisplayVersion),
-                   DownloadButtonText      = GetText(UiTextKey.DownloadUpdateButtonText, "Download update"),
-                   LaunchCurrentButtonText = GetText(UiTextKey.LaunchCurrentVersionButtonText, "Launch current"),
-                   SkipVersionButtonText   = GetText(UiTextKey.SkipVersionButtonText, "Skip this version"),
-                   CancelButtonText        = GetText(UiTextKey.CancelButtonText, "Cancel"),
-                   AllowLaunchCurrent      = allowLaunchCurrent,
-                   AllowSkipVersion        = allowSkipVersion
+                   WindowTitle              = GetText(UiTextKey.UpdatePromptTitle, "{ApplicationName} Update Available", update.DisplayVersion),
+                   Message                  = GetText(UiTextKey.UpdatePromptBody, "A newer version of {ApplicationName} is available ({Version}).", update.DisplayVersion),
+                   DownloadButtonText       = GetText(UiTextKey.DownloadUpdateButtonText, "Download update"),
+                   SkipForSessionButtonText = GetText(UiTextKey.SkipForSessionButtonText, "Skip for now"),
+                   SkipVersionButtonText    = GetText(UiTextKey.SkipVersionButtonText, "Skip this version"),
+                   CancelButtonText         = GetText(UiTextKey.CancelButtonText, "Cancel"),
+                   AllowSkipForSession      = allowSkipForSession,
+                   AllowSkipVersion         = allowSkipVersion
                }))
         {
             var dialogResult = prompt.ShowDialog(this);
@@ -140,6 +126,25 @@ internal sealed partial class MainForm : Form, IUpdaterView
 
         Close();
     }
+
+    #region Overrides
+    protected override void OnShown(EventArgs e)
+    {
+        base.OnShown(e);
+
+        _ = RunWorkflowAsync();
+    }
+
+    protected override void OnFormClosing(FormClosingEventArgs e)
+    {
+        _cts.Cancel();
+        _cts.Dispose();
+
+        base.OnFormClosing(e);
+    }
+    #endregion
+
+    private Task RunWorkflowAsync() => new UpdaterWorkflow().RunAsync(this, _cts.Token);
 
     private void UpdateInstallationProgress(InstallationProgress progress)
     {
@@ -238,6 +243,7 @@ internal sealed partial class MainForm : Form, IUpdaterView
     private void SetStatusMessage(string message, bool indeterminate)
     {
         c_StatusLabel.Text = message;
+
         if (indeterminate)
         {
             if (c_ProgressBar.Style != ProgressBarStyle.Marquee)
@@ -255,7 +261,13 @@ internal sealed partial class MainForm : Form, IUpdaterView
         }
     }
 
-    private string GetText(UiTextKey key, string fallback, string? version = null, int? percent = null, string? processName = null, string? runtimeNames = null, string? runtimeName = null)
+    private string GetText(UiTextKey key,
+                           string    fallback,
+                           string?   version      = null,
+                           int?      percent      = null,
+                           string?   processName  = null,
+                           string?   runtimeNames = null,
+                           string?   runtimeName  = null)
         => _textResolver.Resolve(_configuration, key, fallback, version, percent, processName, runtimeNames, runtimeName);
 
     private void ApplyAppearance(AppearanceConfiguration appearance)

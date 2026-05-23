@@ -128,13 +128,13 @@ internal sealed class UpdaterWorkflow
                     case UpdatePromptChoice.Cancel:
                         view.CloseWindow();
                         return;
-                    case UpdatePromptChoice.LaunchCurrent:
-                        view.SetStatus(UiTextKey.LaunchingCurrentVersionStatus, "Launching the current version...", true);
+                    case UpdatePromptChoice.SkipForSession:
+                        view.SetStatus(UiTextKey.LaunchingCurrentVersionStatus, "Launching current version...", true);
                         await LaunchAsync(view, runtime, currentInstallation, ct);
                         return;
                     case UpdatePromptChoice.SkipVersion:
                         runtime.SkipVersion(updateResult.AvailableUpdate.Version.NormalizedValue);
-                        view.SetStatus(UiTextKey.LaunchingCurrentVersionStatus, "Launching the current version...", true);
+                        view.SetStatus(UiTextKey.LaunchingCurrentVersionStatus, "Launching current version...", true);
                         await LaunchAsync(view, runtime, currentInstallation, ct);
                         return;
                 }

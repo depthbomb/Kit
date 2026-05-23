@@ -18,7 +18,7 @@ internal enum UiTextKey
     LaunchingUpdatedVersionStatus,
     ErrorDialogTitle,
     DownloadUpdateButtonText,
-    LaunchCurrentVersionButtonText,
+    SkipForSessionButtonText,
     SkipVersionButtonText,
     CancelButtonText,
     VerifyingIntegrityStatus,

@@ -1,4 +1,5 @@
 // ReSharper disable once CheckNamespace
+
 namespace Shared;
 
 internal sealed class UpdaterConfiguration
@@ -127,6 +128,8 @@ internal sealed class TextConfiguration
 
     public string DownloadUpdateButtonText { get; set; } = string.Empty;
 
+    public string SkipForSessionButtonText { get; set; } = string.Empty;
+
     public string LaunchCurrentVersionButtonText { get; set; } = string.Empty;
 
     public string SkipVersionButtonText { get; set; } = string.Empty;
@@ -136,7 +139,7 @@ internal sealed class TextConfiguration
     public string VerifyingIntegrityStatus { get; set; } = string.Empty;
 
     public string ExtractingArchiveStatus { get; set; } = string.Empty;
-    
+
     public string CompressingFilesStatus { get; set; } = string.Empty;
 
     public string PreparingFilesStatus { get; set; } = string.Empty;

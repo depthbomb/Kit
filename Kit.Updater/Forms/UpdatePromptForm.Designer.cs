@@ -6,7 +6,7 @@ namespace Kit.Updater.Forms
         private System.Windows.Forms.Panel       _contentPanel;
         private System.Windows.Forms.Label       _messageLabel;
         private System.Windows.Forms.Button      _downloadButton;
-        private System.Windows.Forms.Button      _launchCurrentButton;
+        private System.Windows.Forms.Button      _skipForSessionButton;
         private System.Windows.Forms.Button      _skipVersionButton;
         private System.Windows.Forms.Button      _cancelButton;
 
@@ -26,12 +26,12 @@ namespace Kit.Updater.Forms
         /// </summary>
         private void InitializeComponent()
         {
-            this._contentPanel        = new System.Windows.Forms.Panel();
-            this._cancelButton        = new System.Windows.Forms.Button();
-            this._skipVersionButton   = new System.Windows.Forms.Button();
-            this._launchCurrentButton = new System.Windows.Forms.Button();
-            this._downloadButton      = new System.Windows.Forms.Button();
-            this._messageLabel        = new System.Windows.Forms.Label();
+            this._contentPanel         = new System.Windows.Forms.Panel();
+            this._cancelButton         = new System.Windows.Forms.Button();
+            this._skipVersionButton    = new System.Windows.Forms.Button();
+            this._skipForSessionButton = new System.Windows.Forms.Button();
+            this._downloadButton       = new System.Windows.Forms.Button();
+            this._messageLabel         = new System.Windows.Forms.Label();
             this._contentPanel.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -39,7 +39,7 @@ namespace Kit.Updater.Forms
             // 
             this._contentPanel.Controls.Add(this._cancelButton);
             this._contentPanel.Controls.Add(this._skipVersionButton);
-            this._contentPanel.Controls.Add(this._launchCurrentButton);
+            this._contentPanel.Controls.Add(this._skipForSessionButton);
             this._contentPanel.Controls.Add(this._downloadButton);
             this._contentPanel.Controls.Add(this._messageLabel);
             this._contentPanel.Dock     = System.Windows.Forms.DockStyle.Fill;
@@ -73,16 +73,16 @@ namespace Kit.Updater.Forms
             this._skipVersionButton.UseVisualStyleBackColor =  true;
             this._skipVersionButton.Click                   += new System.EventHandler(this.SkipVersionButtonClick);
             // 
-            // _launchCurrentButton
+            // _skipForSessionButton
             // 
-            this._launchCurrentButton.Anchor                  =  ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this._launchCurrentButton.Location                =  new System.Drawing.Point(149, 71);
-            this._launchCurrentButton.Name                    =  "_launchCurrentButton";
-            this._launchCurrentButton.Size                    =  new System.Drawing.Size(128, 24);
-            this._launchCurrentButton.TabIndex                =  4;
-            this._launchCurrentButton.Text                    =  "Launch current";
-            this._launchCurrentButton.UseVisualStyleBackColor =  true;
-            this._launchCurrentButton.Click                   += new System.EventHandler(this.LaunchCurrentButtonClick);
+            this._skipForSessionButton.Anchor                  =  ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this._skipForSessionButton.Location                =  new System.Drawing.Point(149, 71);
+            this._skipForSessionButton.Name                    =  "_skipForSessionButton";
+            this._skipForSessionButton.Size                    =  new System.Drawing.Size(128, 24);
+            this._skipForSessionButton.TabIndex                =  4;
+            this._skipForSessionButton.Text                    =  "Skip for now";
+            this._skipForSessionButton.UseVisualStyleBackColor =  true;
+            this._skipForSessionButton.Click                   += new System.EventHandler(this.SkipForSessionButtonClick);
             // 
             // _downloadButton
             // 

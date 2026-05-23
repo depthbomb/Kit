@@ -30,8 +30,6 @@
         <Compile Update="Forms\MainForm.cs">
             <SubType>Form</SubType>
         </Compile>
-        <Compile Update="Forms\UpdatePromptForm.cs">
-            <SubType>Form</SubType>
-        </Compile>
+        <Compile Update="Forms\UpdatePromptForm.cs" />
     </ItemGroup>
 </Project>
