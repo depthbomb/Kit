@@ -128,6 +128,9 @@ internal sealed class UpdaterRuntime
     private const string LastDownloadedVersionFileName = ".kit-last-downloaded-version";
     private const string SkippedVersionFileName        = ".kit-skipped-version";
 
+    private List<LocalApplicationInstallation>? _installedVersionsCache;
+    private bool                                _installedVersionsDirty = true;
+
     private readonly UpdaterConfiguration _configuration;
     private readonly IUpdateSource        _updateSource;
     private readonly string               _baseDirectory;
@@ -293,9 +296,11 @@ internal sealed class UpdaterRuntime
             }
 
             Directory.Move(preparedDirectory, targetDirectory);
+            MarkInstalledVersionsDirty();
             PersistVersionMarkers(update.Version.NormalizedValue);
             ClearSkippedVersion();
             CleanupOldVersions(targetDirectory);
+
             return BuildInstallation(update.Version.NormalizedValue);
         }
         finally
@@ -388,6 +393,11 @@ internal sealed class UpdaterRuntime
 
     private List<LocalApplicationInstallation> GetInstalledVersions()
     {
+        if (!_installedVersionsDirty && _installedVersionsCache != null)
+        {
+            return _installedVersionsCache;
+        }
+
         var installations = new List<LocalApplicationInstallation>();
         foreach (var directory in Directory.GetDirectories(_baseDirectory, "app-*", SearchOption.TopDirectoryOnly))
         {
@@ -405,6 +415,9 @@ internal sealed class UpdaterRuntime
 
             installations.Add(new LocalApplicationInstallation(version!, directory, Path.Combine(directory, _configuration.LaunchExecutable)));
         }
+
+        _installedVersionsCache = installations;
+        _installedVersionsDirty = false;
 
         return installations;
     }
@@ -721,6 +734,11 @@ internal sealed class UpdaterRuntime
         {
             TryDeleteDirectory(installation.DirectoryPath);
         }
+
+        if (installationsToDelete.Count > 0)
+        {
+            MarkInstalledVersionsDirty();
+        }
     }
 
     private string ResolveProcessName()
@@ -846,6 +864,12 @@ internal sealed class UpdaterRuntime
     private static void Report(IProgress<InstallationProgress>? progress, InstallationPhase phase, string version)
     {
         progress?.Report(new InstallationProgress(phase, version, null, null));
+    }
+
+    private void MarkInstalledVersionsDirty()
+    {
+        _installedVersionsDirty = true;
+        _installedVersionsCache = null;
     }
 
     private static void TryDeleteFile(string path)
