@@ -22,7 +22,7 @@ internal static class AppRuntimeChecker
     {
         var url          = GetDownloadUrl(requiredVersion);
         var versionLabel = $"{requiredVersion.Major}.{requiredVersion.Minor}";
-        var tempPath     = Path.Combine(Path.GetTempPath(), $"windowsappruntimeinstall-{Guid.NewGuid():N}.exe");
+        var tempPath     = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():B}.exe");
 
         try
         {
@@ -128,7 +128,6 @@ internal static class AppRuntimeChecker
 
     private static Version? TryExtractVersion(string packageName)
     {
-        // Format:
         // Microsoft.WindowsAppRuntime.X_2.1.3.0_x64__...
 
         var firstUnderscore = packageName.IndexOf('_');
