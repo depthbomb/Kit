@@ -1,4 +1,4 @@
-﻿using Shared;
+using Shared;
 
 namespace Kit.Cli;
 
@@ -18,18 +18,18 @@ internal static class StampPayloadBuilder
 
         var payload = new UpdaterConfiguration
         {
-            ApplicationName    = configuration.ApplicationName?.Trim()  ?? string.Empty,
-            InitialVersion     = configuration.InitialVersion?.Trim()   ?? string.Empty,
-            UpdaterVersion     = version?.Trim()                        ?? string.Empty,
-            LaunchExecutable   = configuration.LaunchExecutable?.Trim() ?? string.Empty,
-            LaunchArguments    = configuration.LaunchArguments?.Trim()  ?? string.Empty,
-            BannerImageBase64  = resolvedBannerPath == null ? string.Empty : Convert.ToBase64String(File.ReadAllBytes(resolvedBannerPath)),
-            WindowIconBase64   = resolvedIconPath   == null ? string.Empty : Convert.ToBase64String(File.ReadAllBytes(resolvedIconPath)),
-            RequiresAppRuntime = configuration.RequiresAppRuntime ?? false,
-            Appearance         = configuration.Appearance         ?? new AppearanceConfiguration(),
-            Text               = configuration.Text               ?? new TextConfiguration(),
-            Installation       = configuration.Installation       ?? new InstallationConfiguration(),
-            UpdatePolicy       = configuration.UpdatePolicy       ?? new UpdatePolicyConfiguration(),
+            ApplicationName           = configuration.ApplicationName?.Trim()  ?? string.Empty,
+            InitialVersion            = configuration.InitialVersion?.Trim()   ?? string.Empty,
+            UpdaterVersion            = version?.Trim()                        ?? string.Empty,
+            LaunchExecutable          = configuration.LaunchExecutable?.Trim() ?? string.Empty,
+            LaunchArguments           = configuration.LaunchArguments?.Trim()  ?? string.Empty,
+            BannerImageBase64         = resolvedBannerPath == null ? string.Empty : Convert.ToBase64String(File.ReadAllBytes(resolvedBannerPath)),
+            WindowIconBase64          = resolvedIconPath   == null ? string.Empty : Convert.ToBase64String(File.ReadAllBytes(resolvedIconPath)),
+            RequiredAppRuntimeVersion = configuration.RequiredAppRuntimeVersion?.Trim() ?? string.Empty,
+            Appearance                = configuration.Appearance                        ?? new AppearanceConfiguration(),
+            Text                      = configuration.Text                              ?? new TextConfiguration(),
+            Installation              = configuration.Installation                      ?? new InstallationConfiguration(),
+            UpdatePolicy              = configuration.UpdatePolicy                      ?? new UpdatePolicyConfiguration(),
             RequiredRuntimes = configuration.RequiredRuntimes?.Select(runtime => new RequiredRuntimeConfiguration
             {
                 Name    = runtime.Name.Trim(),

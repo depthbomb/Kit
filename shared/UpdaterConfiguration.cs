@@ -25,7 +25,7 @@ internal sealed class UpdaterConfiguration
 
     public string WindowIconBase64 { get; set; } = string.Empty;
 
-    public bool RequiresAppRuntime { get; set; }
+    public string RequiredAppRuntimeVersion { get; set; } = string.Empty;
 
     public AppearanceConfiguration Appearance { get; set; } = new();
 

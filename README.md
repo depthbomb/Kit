@@ -103,7 +103,7 @@ Current top-level fields:
 - `launchArguments` optional
 - `bannerImagePath` optional
 - `windowIconPath` optional, must point to an `.ico`
-- `requiresAppRuntime` optional
+- `requiredAppRuntimeVersion` optional
 - `appearance` optional
 - `text` optional
 - `installation` optional
@@ -121,7 +121,7 @@ Example:
   "launchArguments": "",
   "bannerImagePath": "assets/banner.png",
   "windowIconPath": "assets/app.ico",
-  "requiresAppRuntime": false,
+  "requiredAppRuntimeVersion": "",
   "appearance": {
     "useDarkMode": true,
     "useDarkTitleBar": true,

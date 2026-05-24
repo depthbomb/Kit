@@ -1,4 +1,4 @@
-﻿using Shared;
+using Shared;
 
 namespace Kit.Cli;
 
@@ -16,7 +16,7 @@ internal sealed class StampInputConfiguration
 
     public string? WindowIconPath { get; set; }
 
-    public bool? RequiresAppRuntime { get; set; }
+    public string? RequiredAppRuntimeVersion { get; set; }
 
     public AppearanceConfiguration? Appearance { get; set; }
 

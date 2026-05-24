@@ -1,4 +1,4 @@
-﻿using Shared;
+using Shared;
 
 namespace Kit.Updater;
 
@@ -29,6 +29,11 @@ internal static class UpdaterConfigurationValidator
         if (configuration.UpdatePolicy == null)
         {
             throw new InvalidOperationException("The stamped configuration is missing UpdatePolicy.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(configuration.RequiredAppRuntimeVersion) && !Version.TryParse(configuration.RequiredAppRuntimeVersion, out _))
+        {
+            throw new InvalidOperationException("The stamped configuration contains an invalid requiredAppRuntimeVersion value.");
         }
 
         var updatePolicyMode = configuration.UpdatePolicy.Mode.Trim();

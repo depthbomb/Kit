@@ -93,6 +93,11 @@ internal static class StampPayloadValidator
             RequireValue(updateSource.Repository, "updateSource.repository");
         }
 
+        if (!string.IsNullOrWhiteSpace(configuration.RequiredAppRuntimeVersion) && !StampVersion.TryParse(configuration.RequiredAppRuntimeVersion))
+        {
+            throw new InvalidOperationException("requiredAppRuntimeVersion must be a valid version string.");
+        }
+
         if (configuration.RequiredRuntimes == null)
         {
             return;

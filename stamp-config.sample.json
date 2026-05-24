@@ -5,7 +5,7 @@
   "launchArguments": "",
   "bannerImagePath": "assets/banner.png",
   "windowIconPath": "assets/app.ico",
-  "requiresAppRuntime": false,
+  "requiredAppRuntimeVersion": "",
   "appearance": {
     "useDarkMode": true,
     "useDarkTitleBar": true,

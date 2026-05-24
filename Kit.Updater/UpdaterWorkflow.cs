@@ -1,4 +1,4 @@
-﻿using Shared;
+using Shared;
 using Kit.Updater.Forms;
 using System.Reflection;
 
@@ -46,11 +46,13 @@ internal sealed class UpdaterWorkflow
 
             var progress = new Progress<InstallationProgress>(view.ReportProgress);
 
-            if (configuration.RequiresAppRuntime)
+            if (!string.IsNullOrWhiteSpace(configuration.RequiredAppRuntimeVersion))
             {
+                var requiredVersion = Version.Parse(configuration.RequiredAppRuntimeVersion);
+
                 view.SetStatus(UiTextKey.CheckingAppRuntimesStatus, "Checking Windows App Runtime...", true);
 
-                if (!AppRuntimeChecker.IsWindowsAppRuntimeInstalled())
+                if (!AppRuntimeChecker.IsWindowsAppRuntimeInstalled(requiredVersion))
                 {
                     if (!view.ConfirmAppRuntimeInstallation())
                     {
@@ -59,7 +61,7 @@ internal sealed class UpdaterWorkflow
                     }
 
                     view.SetStatus(UiTextKey.InstallingAppRuntimeStatus, "Installing Windows App Runtime...", false);
-                    await AppRuntimeChecker.DownloadAndInstallAppRuntimeAsync(progress, ct);
+                    await AppRuntimeChecker.DownloadAndInstallAppRuntimeAsync(requiredVersion, progress, ct);
                 }
             }
 
