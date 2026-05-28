@@ -6,6 +6,8 @@ internal static class Program
 {
     private static int Main(string[] args)
     {
+        // TODO migrate to System.CommandLine?
+
         try
         {
             var parseResult = CommandLine.Parse(args);
@@ -21,6 +23,7 @@ internal static class Program
                 CommandName.Inspect  => InspectCommand.Run(parseResult.Command),
                 CommandName.Manifest => ManifestCommand.Run(parseResult.Command),
                 CommandName.Release  => ReleaseCommand.Run(parseResult.Command),
+                CommandName.Setup    => SetupCommand.Run(parseResult.Command),
                 _                    => throw new InvalidOperationException("Unsupported command.")
             };
         }

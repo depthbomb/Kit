@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 
 namespace Kit.Cli;
 
@@ -7,7 +7,8 @@ internal enum CommandName
     Stamp,
     Inspect,
     Manifest,
-    Release
+    Release,
+    Setup
 }
 
 internal sealed class RootCommand
@@ -53,6 +54,7 @@ internal static class CommandLine
             "inspect"  => CommandName.Inspect,
             "manifest" => CommandName.Manifest,
             "release"  => CommandName.Release,
+            "setup"    => CommandName.Setup,
             _          => throw new InvalidOperationException("Unknown command: " + args[0])
         };
 
@@ -76,6 +78,7 @@ internal static class CommandLine
         builder.AppendLine("\tkit inspect --input <stamped-bootstrapper.exe>");
         builder.AppendLine("\tkit manifest  --version <release version> --updater <stamped-updater.exe> --package <app-package.zip> --installer <updater-refresh-installer.exe> [--output <release-manifest.json>] [--updater-update-required <true|false>]");
         builder.AppendLine("\tkit release --app-dir <app-dir-path> --config <stamp-config.json> --updater <blank-updater.exe> [--version <release-version>] [--output-dir <output-dir-path>] [--package-name <app-package.zip>] [--updater-update-required <true|false>] [--installer-command <command>] [--installer-args <args>] [--installer-path <installer-path>]");
+        builder.AppendLine("\tkit setup --input <blank-setup.exe> --package <app-package.zip> --config <stamp-config.json> [--output <stamped-setup.exe>]");
         builder.AppendLine();
         builder.AppendLine("Options:");
         builder.AppendLine("\t--help, -h    Show usage");

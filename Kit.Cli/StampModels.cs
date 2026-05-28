@@ -2,6 +2,21 @@ using Shared;
 
 namespace Kit.Cli;
 
+internal sealed class SetupInputSection
+{
+    public string? OrganizationName        { get; set; }
+    public string? InstallLocation         { get; set; }
+    public string? ProcessName             { get; set; }
+    public string? AddToPath               { get; set; }
+    public bool?   CreateDesktopShortcut   { get; set; }
+    public bool?   CreateStartMenuShortcut { get; set; }
+    public string? PreInstallCommand       { get; set; }
+    public string? PreInstallArguments     { get; set; }
+    public string? PostInstallCommand      { get; set; }
+    public string? PostInstallArguments    { get; set; }
+    public string? WelcomeText             { get; set; }
+}
+
 internal sealed class StampInputConfiguration
 {
     public string? ApplicationName { get; set; }
@@ -29,4 +44,19 @@ internal sealed class StampInputConfiguration
     public List<RequiredRuntimeConfiguration>? RequiredRuntimes { get; set; }
 
     public UpdateSourceConfiguration? UpdateSource { get; set; }
+
+    // Setup configurations (can be root or nested inside "setup" section)
+    public string? OrganizationName        { get; set; }
+    public string? InstallLocation         { get; set; }
+    public string? ProcessName             { get; set; }
+    public string? AddToPath               { get; set; }
+    public bool?   CreateDesktopShortcut   { get; set; }
+    public bool?   CreateStartMenuShortcut { get; set; }
+    public string? PreInstallCommand       { get; set; }
+    public string? PreInstallArguments     { get; set; }
+    public string? PostInstallCommand      { get; set; }
+    public string? PostInstallArguments    { get; set; }
+    public string? WelcomeText             { get; set; }
+
+    public SetupInputSection? Setup { get; set; }
 }

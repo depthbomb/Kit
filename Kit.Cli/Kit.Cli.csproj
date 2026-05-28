@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
@@ -18,6 +18,9 @@
     <ItemGroup>
         <Compile Include="..\shared\UpdaterConfiguration.cs">
           <Link>shared\UpdaterConfiguration.cs</Link>
+        </Compile>
+        <Compile Include="..\shared\SetupConfiguration.cs">
+          <Link>shared\SetupConfiguration.cs</Link>
         </Compile>
         <Compile Include="..\shared\StampPayload.cs" Link="shared\StampPayload.cs" />
     </ItemGroup>
