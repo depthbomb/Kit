@@ -124,7 +124,9 @@ internal sealed class UpdaterWorkflow
 
             if (currentInstallation != null)
             {
-                var requireImmediateInstall = IsUpdateRequired(configuration.UpdatePolicy, currentInstallation);
+                // Updater updates are always treated as required, skipping them (for the session or permanently)
+                // would bypass a mandatory installer update, so only Install/Cancel is offered.
+                var requireImmediateInstall = updateResult.AvailableUpdate.IsUpdaterUpdate || IsUpdateRequired(configuration.UpdatePolicy, currentInstallation);
                 switch (view.PromptForUpdate(updateResult.AvailableUpdate, !requireImmediateInstall, !requireImmediateInstall))
                 {
                     case UpdatePromptChoice.Cancel:

@@ -1,4 +1,4 @@
-﻿using Shared;
+using Shared;
 
 namespace Kit.Updater;
 
@@ -186,10 +186,14 @@ internal sealed class UpdaterRuntime
             return new UpdateCheckResult(false, currentInstallation, availableUpdate);
         }
 
-        var skippedVersion = _installationState.ReadSkippedVersion();
-        if (skippedVersion != null && skippedVersion.CompareTo(availableUpdate.Version) == 0)
+        // Do not honor a skipped-version marker for updater updates - they must always proceed.
+        if (!availableUpdate.IsUpdaterUpdate)
         {
-            return new UpdateCheckResult(false, currentInstallation, availableUpdate, false, true);
+            var skippedVersion = _installationState.ReadSkippedVersion();
+            if (skippedVersion != null && skippedVersion.CompareTo(availableUpdate.Version) == 0)
+            {
+                return new UpdateCheckResult(false, currentInstallation, availableUpdate, false, true);
+            }
         }
 
         var localMatch = _installationState.FindInstalledVersion(availableUpdate.Version);
