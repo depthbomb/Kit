@@ -41,5 +41,10 @@ internal enum UiTextKey
     InstallingAppRuntimeStatus,
     DownloadingAppRuntimeProgressStatus,
     AppRuntimeRequirementPromptTitle,
-    AppRuntimeRequirementPromptBody
+    AppRuntimeRequirementPromptBody,
+    CheckingWebView2RuntimeStatus,
+    InstallingWebView2RuntimeStatus,
+    DownloadingWebView2RuntimeProgressStatus,
+    WebView2RuntimeRequirementPromptTitle,
+    WebView2RuntimeRequirementPromptBody,
 }

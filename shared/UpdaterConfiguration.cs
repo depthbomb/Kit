@@ -179,6 +179,16 @@ internal sealed class TextConfiguration
     public string AppRuntimeRequirementPromptTitle { get; set; } = string.Empty;
 
     public string AppRuntimeRequirementPromptBody { get; set; } = string.Empty;
+
+    public string CheckingWebView2RuntimeStatus { get; set; } = string.Empty;
+
+    public string InstallingWebView2RuntimeStatus { get; set; } = string.Empty;
+
+    public string DownloadingWebView2RuntimeProgressStatus { get; set; } = string.Empty;
+
+    public string WebView2RuntimeRequirementPromptTitle { get; set; } = string.Empty;
+
+    public string WebView2RuntimeRequirementPromptBody { get; set; } = string.Empty;
 }
 
 internal sealed class RequiredRuntimeConfiguration

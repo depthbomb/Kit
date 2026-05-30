@@ -19,6 +19,7 @@ It consists of:
 - Optional NTFS compression of extracted files
 - Optional installation of required .NET runtimes
 - Optional installation of Windows App Runtime
+- Optional installation of Microsoft Edge WebView2 Runtime
 - Updater-refresh releases via an external installer plus `release-manifest.json`
 
 ## CLI Commands
@@ -104,6 +105,7 @@ Current top-level fields:
 - `bannerImagePath` optional
 - `windowIconPath` optional, must point to an `.ico`
 - `requiredAppRuntimeVersion` optional
+- `requireWebView2Runtime` optional
 - `appearance` optional
 - `text` optional
 - `installation` optional
@@ -122,6 +124,7 @@ Example:
   "bannerImagePath": "assets/banner.png",
   "windowIconPath": "assets/app.ico",
   "requiredAppRuntimeVersion": "",
+  "requireWebView2Runtime": false,
   "appearance": {
     "useDarkMode": true,
     "useDarkTitleBar": true,
@@ -178,6 +181,14 @@ Supported values:
 When omitted, `compressFiles` defaults to `true`.
 
 Compression is applied when the updater installs files from a downloaded package, including fresh installs and normal update installs.
+
+### `requiredAppRuntimeVersion`
+
+When set, the updater checks for a Windows App Runtime version greater than or equal to the configured version. If it is missing, the user is prompted before the updater downloads and installs the matching Microsoft bootstrapper.
+
+### `requireWebView2Runtime`
+
+When `true`, the updater checks for the Evergreen Microsoft Edge WebView2 Runtime before checking for app updates. If the runtime is missing, the user is prompted before the updater downloads and installs the Evergreen Bootstrapper from Microsoft.
 
 ### `updatePolicy.mode`
 

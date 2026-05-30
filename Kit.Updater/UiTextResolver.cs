@@ -14,15 +14,14 @@ internal sealed class UiTextResolver
                 CreateAccessor,
                 StringComparer.Ordinal);
 
-    public string Resolve(
-        UpdaterConfiguration configuration,
-        UiTextKey            key,
-        string               fallback,
-        string?              version      = null,
-        int?                 percent      = null,
-        string?              processName  = null,
-        string?              runtimeNames = null,
-        string?              runtimeName  = null)
+    public string Resolve(UpdaterConfiguration configuration,
+                          UiTextKey            key,
+                          string               fallback,
+                          string?              version      = null,
+                          int?                 percent      = null,
+                          string?              processName  = null,
+                          string?              runtimeNames = null,
+                          string?              runtimeName  = null)
     {
         var template = ResolveTemplate(configuration.Text, key.ToString(), fallback);
 

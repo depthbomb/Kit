@@ -6,6 +6,7 @@
   "bannerImagePath": "assets/banner.png",
   "windowIconPath": "assets/app.ico",
   "requiredAppRuntimeVersion": "",
+  "requireWebView2Runtime": false,
   "appearance": {
     "useDarkMode": true,
     "useDarkTitleBar": true,
@@ -48,7 +49,17 @@
     "installingRuntimeStatus": "Installing {RuntimeName} {Version}...",
     "downloadingRuntimeProgressStatus": "Downloading .NET runtime... {Percent}%",
     "runtimeRequirementPromptTitle": ".NET Runtime Required",
-    "runtimeRequirementPromptBody": "This application requires the following .NET runtimes:\r\n\r\n{RuntimeNames}\r\n\r\nWould you like to download and install them now?"
+    "runtimeRequirementPromptBody": "This application requires the following .NET runtimes:\r\n\r\n{RuntimeNames}\r\n\r\nWould you like to download and install them now?",
+    "checkingAppRuntimesStatus": "Checking Windows App Runtime...",
+    "installingAppRuntimeStatus": "Installing Windows App Runtime...",
+    "downloadingAppRuntimeProgressStatus": "Downloading Windows App Runtime... {Percent}%",
+    "appRuntimeRequirementPromptTitle": "Windows App Runtime Required",
+    "appRuntimeRequirementPromptBody": "This application requires the Windows App Runtime to be installed.\r\n\r\nWould you like to download and install it now?",
+    "checkingWebView2RuntimeStatus": "Checking Microsoft Edge WebView2 Runtime...",
+    "installingWebView2RuntimeStatus": "Installing Microsoft Edge WebView2 Runtime...",
+    "downloadingWebView2RuntimeProgressStatus": "Downloading Microsoft Edge WebView2 Runtime... {Percent}%",
+    "webView2RuntimeRequirementPromptTitle": "Microsoft Edge WebView2 Runtime Required",
+    "webView2RuntimeRequirementPromptBody": "This application requires the Microsoft Edge WebView2 Runtime to be installed.\r\n\r\nWould you like to download and install it now?"
   },
   "installation": {
     "requireIntegrityVerification": true,

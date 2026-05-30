@@ -75,6 +75,18 @@ internal sealed partial class MainForm : Form, IUpdaterView
         return result == DialogResult.Yes;
     }
 
+    public bool ConfirmWebView2RuntimeInstallation()
+    {
+        var result = MessageBox.Show(
+            this,
+            GetText(UiTextKey.WebView2RuntimeRequirementPromptBody, "This application requires the Microsoft Edge WebView2 Runtime to be installed.\r\n\r\nWould you like to download and install it now?"),
+            GetText(UiTextKey.WebView2RuntimeRequirementPromptTitle, "Microsoft Edge WebView2 Runtime Required"),
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Information);
+
+        return result == DialogResult.Yes;
+    }
+
     public UpdatePromptChoice PromptForUpdate(AvailableUpdate update, bool allowSkipForSession, bool allowSkipVersion)
     {
         using (var prompt = new UpdatePromptForm(new UpdatePromptRequest
@@ -236,6 +248,27 @@ internal sealed partial class MainForm : Form, IUpdaterView
                 break;
             case InstallationPhase.InstallingAppRuntime:
                 SetStatusMessage(GetText(UiTextKey.InstallingAppRuntimeStatus, "Installing Windows App Runtime..."), true);
+                break;
+            case InstallationPhase.DownloadingWebView2Runtime:
+                if (progress.TotalBytes is > 0)
+                {
+                    var percentage = (int)Math.Max(0, Math.Min(100, progress.BytesReceived.GetValueOrDefault() * 100 / progress.TotalBytes.Value));
+                    if (c_ProgressBar.Style != ProgressBarStyle.Continuous)
+                    {
+                        c_ProgressBar.Style = ProgressBarStyle.Continuous;
+                    }
+
+                    c_ProgressBar.Value = percentage;
+                    c_StatusLabel.Text  = GetText(UiTextKey.DownloadingWebView2RuntimeProgressStatus, "Downloading Microsoft Edge WebView2 Runtime... {Percent}%", percent: percentage);
+                }
+                else
+                {
+                    SetStatusMessage(GetText(UiTextKey.InstallingWebView2RuntimeStatus, "Installing Microsoft Edge WebView2 Runtime..."), true);
+                }
+
+                break;
+            case InstallationPhase.InstallingWebView2Runtime:
+                SetStatusMessage(GetText(UiTextKey.InstallingWebView2RuntimeStatus, "Installing Microsoft Edge WebView2 Runtime..."), true);
                 break;
         }
     }

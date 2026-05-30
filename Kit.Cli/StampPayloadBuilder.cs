@@ -26,6 +26,7 @@ internal static class StampPayloadBuilder
             BannerImageBase64         = resolvedBannerPath == null ? string.Empty : Convert.ToBase64String(File.ReadAllBytes(resolvedBannerPath)),
             WindowIconBase64          = resolvedIconPath   == null ? string.Empty : Convert.ToBase64String(File.ReadAllBytes(resolvedIconPath)),
             RequiredAppRuntimeVersion = configuration.RequiredAppRuntimeVersion?.Trim() ?? string.Empty,
+            RequireWebView2Runtime    = configuration.RequireWebView2Runtime,
             Appearance                = configuration.Appearance                        ?? new AppearanceConfiguration(),
             Text                      = configuration.Text                              ?? new TextConfiguration(),
             Installation              = configuration.Installation                      ?? new InstallationConfiguration(),

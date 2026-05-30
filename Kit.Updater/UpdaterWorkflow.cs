@@ -21,6 +21,8 @@ internal interface IUpdaterView
 
     bool ConfirmAppRuntimeInstallation();
 
+    bool ConfirmWebView2RuntimeInstallation();
+
     UpdatePromptChoice PromptForUpdate(AvailableUpdate update, bool allowLaunchCurrent, bool allowSkipVersion);
 
     bool ConfirmApplicationClosedForInstall(string version, string processName);
@@ -69,6 +71,23 @@ internal sealed class UpdaterWorkflow
 
                     view.SetStatus(UiTextKey.InstallingAppRuntimeStatus, "Installing Windows App Runtime...", false);
                     await AppRuntimeChecker.DownloadAndInstallAppRuntimeAsync(requiredVersion, progress, ct);
+                }
+            }
+
+            if (configuration.RequireWebView2Runtime)
+            {
+                view.SetStatus(UiTextKey.CheckingWebView2RuntimeStatus, "Checking Microsoft Edge WebView2 Runtime...", true);
+
+                if (!WebView2RuntimeChecker.IsWebView2RuntimeInstalled())
+                {
+                    if (!view.ConfirmWebView2RuntimeInstallation())
+                    {
+                        view.CloseWindow();
+                        return;
+                    }
+
+                    view.SetStatus(UiTextKey.InstallingWebView2RuntimeStatus, "Installing Microsoft Edge WebView2 Runtime...", false);
+                    await WebView2RuntimeChecker.DownloadAndInstallWebView2RuntimeAsync(progress, ct);
                 }
             }
 

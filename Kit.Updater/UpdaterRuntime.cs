@@ -95,7 +95,9 @@ internal enum InstallationPhase
     DownloadingRuntime,
     InstallingRuntime,
     DownloadingAppRuntime,
-    InstallingAppRuntime
+    InstallingAppRuntime,
+    DownloadingWebView2Runtime,
+    InstallingWebView2Runtime
 }
 
 internal sealed class InstallationProgress
@@ -148,9 +150,9 @@ internal sealed class UpdaterRuntime
         => _installationState.ResolveCurrentInstallation();
 
     public async Task<UpdateCheckResult> CheckForUpdateAsync(LocalApplicationInstallation? currentInstallation,
-                                                             CancellationToken             cancellationToken)
+                                                             CancellationToken             ct)
     {
-        var availableUpdate = await _updateSource.GetAvailableUpdateAsync(cancellationToken).ConfigureAwait(false);
+        var availableUpdate = await _updateSource.GetAvailableUpdateAsync(ct).ConfigureAwait(false);
         if (availableUpdate == null)
         {
             return new UpdateCheckResult(false, currentInstallation, null);
@@ -307,16 +309,13 @@ internal sealed class UpdaterRuntime
         }
     }
 
-    public void SkipVersion(string version)
-        => _installationState.SkipVersion(version);
+    public void SkipVersion(string version) => _installationState.SkipVersion(version);
 
-    public bool IsApplicationRunning()
-        => _applicationLauncher.IsApplicationRunning();
+    public bool IsApplicationRunning() => _applicationLauncher.IsApplicationRunning();
 
     public string GetApplicationProcessName() => _applicationLauncher.GetApplicationProcessName();
 
-    public void Launch(LocalApplicationInstallation installation)
-        => _applicationLauncher.Launch(installation);
+    public void Launch(LocalApplicationInstallation installation) => _applicationLauncher.Launch(installation);
 
     private static void Report(IProgress<InstallationProgress>? progress, InstallationPhase phase, string version)
     {
