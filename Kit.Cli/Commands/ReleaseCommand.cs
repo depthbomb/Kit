@@ -52,7 +52,7 @@ internal static class ReleaseCommand
         var outputDir     = command.Options.GetValueOrDefault("output-dir", "./out");
         var packageName   = command.Options.GetValueOrDefault("package-name", "app-package.zip");
         var fullOutputDir = Path.GetFullPath(outputDir);
-        if (fullOutputDir.StartsWith(fullAppDir, StringComparison.OrdinalIgnoreCase))
+        if (IsSameOrChildPath(fullOutputDir, fullAppDir))
         {
             throw new InvalidOperationException("The output directory cannot be inside the application directory being zipped.");
         }
@@ -224,6 +224,15 @@ internal static class ReleaseCommand
         }
 
         throw new InvalidOperationException("Option --" + optionName + " must be either true or false.");
+    }
+
+    private static bool IsSameOrChildPath(string candidatePath, string parentPath)
+    {
+        var relativePath = Path.GetRelativePath(parentPath, candidatePath);
+        return relativePath.Length == 0
+               || string.Equals(relativePath, ".", StringComparison.Ordinal)
+               || (!relativePath.StartsWith("..", StringComparison.Ordinal)
+                   && !Path.IsPathRooted(relativePath));
     }
 }
 
