@@ -9,7 +9,6 @@ public static class NtfsCompressor
     // ReSharper disable InconsistentNaming
     private const uint FSCTL_SET_COMPRESSION = 0x9C040;
 
-    private const short COMPRESSION_FORMAT_NONE    = 0;
     private const short COMPRESSION_FORMAT_DEFAULT = 1;
 
     private const uint GENERIC_READ  = 0x80000000;
@@ -26,71 +25,42 @@ public static class NtfsCompressor
     // ReSharper enable InconsistentNaming
 
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    private static extern SafeFileHandle CreateFile(
-        string lpFileName,
-        uint   dwDesiredAccess,
-        uint   dwShareMode,
-        IntPtr lpSecurityAttributes,
-        uint   dwCreationDisposition,
-        uint   dwFlagsAndAttributes,
-        IntPtr hTemplateFile);
+    private static extern SafeFileHandle CreateFile(string lpFileName,
+                                                    uint   dwDesiredAccess,
+                                                    uint   dwShareMode,
+                                                    IntPtr lpSecurityAttributes,
+                                                    uint   dwCreationDisposition,
+                                                    uint   dwFlagsAndAttributes,
+                                                    IntPtr hTemplateFile);
 
     [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern unsafe bool DeviceIoControl(
-        SafeFileHandle hDevice,
-        uint           dwIoControlCode,
-        void*          lpInBuffer,
-        uint           nInBufferSize,
-        void*          lpOutBuffer,
-        uint           nOutBufferSize,
-        out uint       lpBytesReturned,
-        IntPtr         lpOverlapped);
+    private static extern unsafe bool DeviceIoControl(SafeFileHandle hDevice,
+                                                      uint           dwIoControlCode,
+                                                      void*          lpInBuffer,
+                                                      uint           nInBufferSize,
+                                                      void*          lpOutBuffer,
+                                                      uint           nOutBufferSize,
+                                                      out uint       lpBytesReturned,
+                                                      IntPtr         lpOverlapped);
 
     public static void CompressDirectoryRecursive(string rootPath)
     {
         CompressDirectory(rootPath);
 
-        foreach (string directory in Directory.EnumerateDirectories(
-                     rootPath,
-                     "*",
-                     SearchOption.AllDirectories))
+        foreach (string directory in Directory.EnumerateDirectories(rootPath, "*", SearchOption.AllDirectories))
         {
             CompressDirectory(directory);
         }
 
-        foreach (string file in Directory.EnumerateFiles(
-                     rootPath,
-                     "*",
-                     SearchOption.AllDirectories))
+        foreach (string file in Directory.EnumerateFiles(rootPath, "*", SearchOption.AllDirectories))
         {
             CompressFile(file);
         }
     }
 
-    public static void DecompressDirectoryRecursive(string rootPath)
-    {
-        DecompressDirectory(rootPath);
-
-        foreach (string directory in Directory.EnumerateDirectories(
-                     rootPath,
-                     "*",
-                     SearchOption.AllDirectories))
-        {
-            DecompressDirectory(directory);
-        }
-
-        foreach (string file in Directory.EnumerateFiles(
-                     rootPath,
-                     "*",
-                     SearchOption.AllDirectories))
-        {
-            DecompressFile(file);
-        }
-    }
-
     private static void CompressDirectory(string path)
     {
-        using (SafeFileHandle handle = OpenDirectoryHandle(path))
+        using (var handle = OpenDirectoryHandle(path))
         {
             SetCompression(handle, COMPRESSION_FORMAT_DEFAULT);
         }
@@ -98,31 +68,15 @@ public static class NtfsCompressor
 
     private static void CompressFile(string path)
     {
-        using (SafeFileHandle handle = OpenFileHandle(path))
+        using (var handle = OpenFileHandle(path))
         {
             SetCompression(handle, COMPRESSION_FORMAT_DEFAULT);
         }
     }
 
-    private static void DecompressDirectory(string path)
-    {
-        using (SafeFileHandle handle = OpenDirectoryHandle(path))
-        {
-            SetCompression(handle, COMPRESSION_FORMAT_NONE);
-        }
-    }
-
-    private static void DecompressFile(string path)
-    {
-        using (SafeFileHandle handle = OpenFileHandle(path))
-        {
-            SetCompression(handle, COMPRESSION_FORMAT_NONE);
-        }
-    }
-
     private static SafeFileHandle OpenFileHandle(string path)
     {
-        SafeFileHandle handle = CreateFile(
+        var handle = CreateFile(
             path,
             GENERIC_READ    | GENERIC_WRITE,
             FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,

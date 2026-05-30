@@ -86,7 +86,9 @@ internal sealed class RuntimeManager
         return runtimes;
     }
 
-    public async Task DownloadAndInstallRuntimeAsync(RequiredRuntimeConfiguration runtime, IProgress<InstallationProgress> progress, CancellationToken ct)
+    public async Task DownloadAndInstallRuntimeAsync(RequiredRuntimeConfiguration    runtime,
+                                                     IProgress<InstallationProgress> progress,
+                                                     CancellationToken               ct)
     {
         var url      = GetDownloadUrl(runtime);
         var tempPath = Path.Combine(Path.GetTempPath(), $"dotnet-runtime-installer-{Guid.NewGuid():N}.exe");
@@ -129,7 +131,11 @@ internal sealed class RuntimeManager
         }
     }
 
-    private async Task DownloadFileAsync(string url, string targetPath, string version, IProgress<InstallationProgress> progress, CancellationToken ct)
+    private async Task DownloadFileAsync(string                          url,
+                                         string                          targetPath,
+                                         string                          version,
+                                         IProgress<InstallationProgress> progress,
+                                         CancellationToken               ct)
     {
         using (var response = await UpdaterHttpClient.Shared.GetAsync(url, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false))
         {

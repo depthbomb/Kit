@@ -24,7 +24,10 @@ internal sealed class ArchiveExtractor
         return string.IsNullOrWhiteSpace(extension) ? ".zip" : extension;
     }
 
-    public async Task ExtractAsync(string archivePath, string archiveExtension, string destinationDirectory, CancellationToken ct)
+    public async Task ExtractAsync(string            archivePath,
+                                   string            archiveExtension,
+                                   string            destinationDirectory,
+                                   CancellationToken ct)
     {
         var sevenZipPath = Path.Combine(_baseDirectory, "bin", "7za.exe");
         var hasSevenZip  = File.Exists(sevenZipPath);
@@ -47,7 +50,10 @@ internal sealed class ArchiveExtractor
         ZipFile.ExtractToDirectory(archivePath, destinationDirectory);
     }
 
-    private static async Task ExtractWithSevenZipAsync(string sevenZipPath, string archivePath, string destinationDirectory, CancellationToken ct)
+    private static async Task ExtractWithSevenZipAsync(string            sevenZipPath,
+                                                       string            archivePath,
+                                                       string            destinationDirectory,
+                                                       CancellationToken ct)
     {
         var startInfo = new ProcessStartInfo
         {

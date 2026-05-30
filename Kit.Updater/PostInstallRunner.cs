@@ -56,7 +56,10 @@ internal sealed class PostInstallRunner
         }
     }
 
-    private void ResolvePostInstallCommand(string preparedDirectory, string command, out string resolvedCommandPath, out bool useCommandShell)
+    private void ResolvePostInstallCommand(string     preparedDirectory,
+                                           string     command,
+                                           out string resolvedCommandPath,
+                                           out bool   useCommandShell)
     {
         useCommandShell     = false;
         resolvedCommandPath = command;

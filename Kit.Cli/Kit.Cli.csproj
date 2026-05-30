@@ -16,10 +16,8 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="..\shared\UpdaterConfiguration.cs">
-          <Link>shared\UpdaterConfiguration.cs</Link>
-        </Compile>
-        <Compile Include="..\shared\StampPayload.cs" Link="shared\StampPayload.cs" />
+        <Compile Include="..\Shared\UpdaterConfiguration.cs" Link="Shared\UpdaterConfiguration.cs"/>
+        <Compile Include="..\Shared\StampPayload.cs" Link="Shared\StampPayload.cs" />
     </ItemGroup>
 
     <ItemGroup>

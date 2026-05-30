@@ -6,7 +6,10 @@ internal sealed class ApplicationVersion : IComparable<ApplicationVersion>
 {
     private readonly List<string> _preReleaseSegments;
 
-    private ApplicationVersion(string originalValue, string normalizedValue, IReadOnlyList<int> numericSegments, List<string> preReleaseSegments)
+    private ApplicationVersion(string             originalValue,
+                               string             normalizedValue,
+                               IReadOnlyList<int> numericSegments,
+                               List<string>       preReleaseSegments)
     {
         OriginalValue       = originalValue;
         NormalizedValue     = normalizedValue;
@@ -146,4 +149,3 @@ internal sealed class ApplicationVersion : IComparable<ApplicationVersion>
 
     public override string ToString() => NormalizedValue;
 }
-

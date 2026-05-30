@@ -27,6 +27,8 @@ internal sealed class UpdaterConfiguration
 
     public string RequiredAppRuntimeVersion { get; set; } = string.Empty;
 
+    public bool RequireWebView2Runtime { get; set; } = false;
+
     public AppearanceConfiguration Appearance { get; set; } = new();
 
     public TextConfiguration Text { get; set; } = new();

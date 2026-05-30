@@ -25,9 +25,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Compile Include="..\Shared\UpdaterConfiguration.cs">
-          <Link>Shared\UpdaterConfiguration.cs</Link>
-        </Compile>
+        <Compile Include="..\Shared\UpdaterConfiguration.cs" Link="Shared\UpdaterConfiguration.cs"/>
         <Compile Include="..\Shared\StampPayload.cs" Link="Shared\StampPayload.cs" />
         <Compile Update="Forms\MainForm.cs">
             <SubType>Form</SubType>

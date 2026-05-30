@@ -8,7 +8,14 @@ internal interface IUpdaterView
 {
     void ApplyConfiguration(UpdaterConfiguration configuration);
 
-    void SetStatus(UiTextKey key, string fallback, bool indeterminate, string? version = null, int? percent = null, string? processName = null, string? runtimeNames = null, string? runtimeName = null);
+    void SetStatus(UiTextKey key,
+                   string    fallback,
+                   bool      indeterminate,
+                   string?   version      = null,
+                   int?      percent      = null,
+                   string?   processName  = null,
+                   string?   runtimeNames = null,
+                   string?   runtimeName  = null);
 
     bool ConfirmRuntimeInstallation(IReadOnlyList<RequiredRuntimeConfiguration> missingRuntimes);
 
@@ -124,8 +131,8 @@ internal sealed class UpdaterWorkflow
 
             if (currentInstallation != null)
             {
-                // Updater updates are always treated as required, skipping them (for the session or permanently)
-                // would bypass a mandatory installer update, so only Install/Cancel is offered.
+                // Updater updates are always treated as required, skipping them (for the session or permanently) would
+                // bypass a mandatory installer update, so only Install/Cancel is offered.
                 var requireImmediateInstall = updateResult.AvailableUpdate.IsUpdaterUpdate || IsUpdateRequired(configuration.UpdatePolicy, currentInstallation);
                 switch (view.PromptForUpdate(updateResult.AvailableUpdate, !requireImmediateInstall, !requireImmediateInstall))
                 {
@@ -171,7 +178,10 @@ internal sealed class UpdaterWorkflow
         }
     }
 
-    private static async Task<bool> EnsureApplicationNotRunningForInstallAsync(IUpdaterView view, UpdaterRuntime runtime, string version, CancellationToken cancellationToken)
+    private static async Task<bool> EnsureApplicationNotRunningForInstallAsync(IUpdaterView      view,
+                                                                               UpdaterRuntime    runtime,
+                                                                               string            version,
+                                                                               CancellationToken ct)
     {
         while (runtime.IsApplicationRunning())
         {
@@ -180,13 +190,16 @@ internal sealed class UpdaterWorkflow
                 return false;
             }
 
-            await Task.Delay(500, cancellationToken);
+            await Task.Delay(500, ct);
         }
 
         return true;
     }
 
-    private static async Task LaunchAsync(IUpdaterView view, UpdaterRuntime runtime, LocalApplicationInstallation? installation, CancellationToken ct)
+    private static async Task LaunchAsync(IUpdaterView                  view,
+                                          UpdaterRuntime                runtime,
+                                          LocalApplicationInstallation? installation,
+                                          CancellationToken             ct)
     {
         if (installation == null)
         {
@@ -232,7 +245,9 @@ internal sealed class UpdaterWorkflow
         return currentInstallation.Version.CompareTo(minimumVersion) < 0;
     }
 
-    private static void EnsureUpdatePolicySatisfied(UpdatePolicyConfiguration policy, LocalApplicationInstallation? currentInstallation, AvailableUpdate? availableUpdate)
+    private static void EnsureUpdatePolicySatisfied(UpdatePolicyConfiguration     policy,
+                                                    LocalApplicationInstallation? currentInstallation,
+                                                    AvailableUpdate?              availableUpdate)
     {
         var mode = policy.Mode.Trim();
         if (!string.Equals(mode, "minimum-version-required", StringComparison.OrdinalIgnoreCase))

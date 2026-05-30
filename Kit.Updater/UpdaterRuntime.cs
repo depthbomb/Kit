@@ -147,7 +147,8 @@ internal sealed class UpdaterRuntime
     public LocalApplicationInstallation? ResolveCurrentInstallation()
         => _installationState.ResolveCurrentInstallation();
 
-    public async Task<UpdateCheckResult> CheckForUpdateAsync(LocalApplicationInstallation? currentInstallation, CancellationToken cancellationToken)
+    public async Task<UpdateCheckResult> CheckForUpdateAsync(LocalApplicationInstallation? currentInstallation,
+                                                             CancellationToken             cancellationToken)
     {
         var availableUpdate = await _updateSource.GetAvailableUpdateAsync(cancellationToken).ConfigureAwait(false);
         if (availableUpdate == null)
@@ -200,7 +201,9 @@ internal sealed class UpdaterRuntime
         return new UpdateCheckResult(true, localMatch ?? currentInstallation, availableUpdate, localMatch != null);
     }
 
-    public async Task<LocalApplicationInstallation> DownloadAndInstallUpdateAsync(AvailableUpdate update, IProgress<InstallationProgress>? progress, CancellationToken ct)
+    public async Task<LocalApplicationInstallation> DownloadAndInstallUpdateAsync(AvailableUpdate                  update,
+                                                                                  IProgress<InstallationProgress>? progress,
+                                                                                  CancellationToken                ct)
     {
         if (update.IsUpdaterUpdate)
         {
@@ -281,7 +284,9 @@ internal sealed class UpdaterRuntime
         }
     }
 
-    private async Task DownloadAndExecuteUpdaterUpdateAsync(AvailableUpdate update, IProgress<InstallationProgress>? progress, CancellationToken ct)
+    private async Task DownloadAndExecuteUpdaterUpdateAsync(AvailableUpdate                  update,
+                                                            IProgress<InstallationProgress>? progress,
+                                                            CancellationToken                ct)
     {
         var tempPath = Path.Combine(Path.GetTempPath(), "kit-installer-" + Guid.NewGuid().ToString("N") + ".exe");
         try
