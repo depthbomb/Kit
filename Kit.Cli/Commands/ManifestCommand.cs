@@ -9,10 +9,8 @@ internal static class ManifestCommand
         var releaseVersion    = CommandLine.GetRequiredOption(command.Options, "version");
         var updaterPath       = CommandLine.GetRequiredOption(command.Options, "updater");
         var packagePath       = CommandLine.GetRequiredOption(command.Options, "package");
-        var installerPath     = CommandLine.GetRequiredOption(command.Options, "installer");
         var fullUpdaterPath   = Path.GetFullPath(updaterPath);
         var fullPackagePath   = Path.GetFullPath(packagePath);
-        var fullInstallerPath = Path.GetFullPath(installerPath);
         var outputDirectory = command.Options.TryGetValue("output", out var configuredOutput)
             ? Path.GetFullPath(configuredOutput)
             : Path.GetDirectoryName(fullUpdaterPath) ?? Environment.CurrentDirectory;
@@ -28,13 +26,22 @@ internal static class ManifestCommand
             throw new FileNotFoundException("Application package was not found.", fullPackagePath);
         }
 
-        if (!File.Exists(fullInstallerPath))
-        {
-            throw new FileNotFoundException("Updater refresh installer was not found.", fullInstallerPath);
-        }
-
         var updaterUpdateRequired = command.Options.TryGetValue("updater-update-required", out var requiredText)
                                     && ParseBoolean(requiredText, "updater-update-required");
+
+        string? fullInstallerPath = null;
+        if (command.Options.TryGetValue("installer", out var installerPath) && !string.IsNullOrWhiteSpace(installerPath))
+        {
+            fullInstallerPath = Path.GetFullPath(installerPath);
+            if (!File.Exists(fullInstallerPath))
+            {
+                throw new FileNotFoundException("Updater refresh installer was not found.", fullInstallerPath);
+            }
+        }
+        else if (updaterUpdateRequired)
+        {
+            throw new InvalidOperationException("--installer is required when --updater-update-required true.");
+        }
 
         var manifest = ReleaseManifestBuilder.Build(
             releaseVersion,

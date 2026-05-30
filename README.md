@@ -29,7 +29,7 @@ The CLI exposes four commands:
 ```text
 kit stamp --input <blank-bootstrapper.exe> --config <stamp-config.json> [--output <stamped-bootstrapper.exe>]
 kit inspect --input <stamped-bootstrapper.exe>
-kit manifest --version <release-version> --updater <stamped-updater.exe> --package <app-package.zip> --installer <updater-refresh-installer.exe> [--output <output-directory>] [--updater-update-required <true|false>]
+kit manifest --version <release-version> --updater <stamped-updater.exe> --package <app-package.zip> [--installer <updater-refresh-installer.exe>] [--output <output-directory>] [--updater-update-required <true|false>]
 kit release --app-dir <app-dir-path> --config <stamp-config.json> --updater <blank-updater.exe> [--version <release-version>] [--output-dir <output-dir-path>] [--package-name <app-package.zip>] [--updater-update-required <true|false>] [--installer-command <command>] [--installer-args <args>] [--installer-path <installer-path>]
 ```
 
@@ -55,14 +55,13 @@ Reads the stamped updater payload and prints the embedded configuration as forma
 
 ### `manifest`
 
-Builds `release-manifest.json` in the target output directory. The manifest always contains the application package. The installer package is only valid when `--updater-update-required true`.
+Builds `release-manifest.json` in the target output directory. The manifest always contains the application package. `--installer` is only required when `--updater-update-required true`.
 
 ```powershell
 .\kit.exe manifest `
   --version 1.1.0 `
   --updater .\out\MyApp-Updater.exe `
   --package .\artifacts\MyApp-1.1.0.zip `
-  --installer .\artifacts\MyApp-1.1.0-setup.exe `
   --output .\artifacts `
   --updater-update-required false
 ```
