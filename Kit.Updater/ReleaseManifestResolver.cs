@@ -27,10 +27,19 @@ internal static class ReleaseManifestResolver
 
         string? appPackageUrl    = null;
         string? appPackageSha256 = null;
-        if (isUpdaterUpdate && !string.IsNullOrWhiteSpace(manifest.ApplicationPackage.FileName))
+        if (isUpdaterUpdate)
         {
+            if (manifest.ApplicationPackage == null || string.IsNullOrWhiteSpace(manifest.ApplicationPackage.FileName))
+            {
+                throw new InvalidOperationException("The release manifest must provide an application package when an updater update is required.");
+            }
+
             appPackageUrl    = resolveFileUrl(manifest.ApplicationPackage.FileName);
             appPackageSha256 = manifest.ApplicationPackage.Sha256;
+            if (string.IsNullOrWhiteSpace(appPackageUrl))
+            {
+                throw new InvalidOperationException("The release manifest application package target could not be resolved.");
+            }
         }
 
         return new AvailableUpdate(
