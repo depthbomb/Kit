@@ -148,11 +148,16 @@ internal sealed class UpdaterWorkflow
                 return;
             }
 
+            if (updateResult.AvailableUpdate.IsUpdaterUpdate)
+            {
+                view.SetStatus(UiTextKey.DownloadingVersionStatus, "Downloading updater update {Version}...", false, updateResult.AvailableUpdate.DisplayVersion);
+                await runtime.DownloadAndInstallUpdateAsync(updateResult.AvailableUpdate, progress, ct);
+                return;
+            }
+
             if (currentInstallation != null)
             {
-                // Updater updates are always treated as required, skipping them (for the session or permanently) would
-                // bypass a mandatory installer update, so only Install/Cancel is offered.
-                var requireImmediateInstall = updateResult.AvailableUpdate.IsUpdaterUpdate || IsUpdateRequired(configuration.UpdatePolicy, currentInstallation);
+                var requireImmediateInstall = IsUpdateRequired(configuration.UpdatePolicy, currentInstallation);
                 switch (view.PromptForUpdate(updateResult.AvailableUpdate, !requireImmediateInstall, !requireImmediateInstall))
                 {
                     case UpdatePromptChoice.Cancel:
