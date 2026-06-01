@@ -1,4 +1,41 @@
-bin/
-obj/
-.idea/
+# Visual Studio / IDE
 .vs/
+*.user
+*.suo
+*.sln.user
+*.sln.ide
+.idea/
+*.iml
+
+# Build outputs
+**/bin/
+**/obj/
+/bin/
+/obj/
+
+# Publish outputs and single-file artifacts
+**/publish/
+**/win-*/
+**/net*/**/win-*/
+*.exe
+*.pdb
+*.dll
+*.runtimeconfig.json
+*.deps.json
+
+# NuGet & packages
+*.nupkg
+project.assets.json
+
+# Rider
+*.sln.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Misc
+*.cache
