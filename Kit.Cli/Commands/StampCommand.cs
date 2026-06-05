@@ -6,13 +6,13 @@ internal static class StampCommand
 {
     public static int Run(RootCommand command)
     {
-        var inputPath  = CommandLine.GetRequiredOption(command.Options, "input");
-        var configPath = CommandLine.GetRequiredOption(command.Options, "config");
-        var outputPath = command.Options.GetValueOrDefault("output", inputPath);
+        var inputPath  = KitRcOptionResolver.GetRequiredPath(command, "input", section => section.Input);
+        var configPath = KitRcOptionResolver.GetRequiredPath(command, "config", section => section.Config);
+        var outputPath = KitRcOptionResolver.GetOptionalPath(command, "output", section => section.Output, inputPath);
 
-        var fullInputPath  = Path.GetFullPath(inputPath);
-        var fullConfigPath = Path.GetFullPath(configPath);
-        var fullOutputPath = Path.GetFullPath(outputPath);
+        var fullInputPath  = inputPath.ResolvePath();
+        var fullConfigPath = configPath.ResolvePath();
+        var fullOutputPath = outputPath.ResolvePath();
 
         if (!File.Exists(fullInputPath))
         {

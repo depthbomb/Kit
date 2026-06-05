@@ -12,15 +12,18 @@ internal enum CommandName
 
 internal sealed class RootCommand
 {
-    public RootCommand(CommandName name, IReadOnlyDictionary<string, string> options)
+    public RootCommand(CommandName name, IReadOnlyDictionary<string, string> options, KitRcContext? kitRc = null)
     {
         Name    = name;
         Options = options;
+        KitRc   = kitRc;
     }
 
     public CommandName Name { get; }
 
     public IReadOnlyDictionary<string, string> Options { get; }
+
+    public KitRcContext? KitRc { get; }
 }
 
 internal sealed class CommandLineParseResult
@@ -77,19 +80,13 @@ internal static class CommandLine
         builder.AppendLine("\tkit manifest  --version <release version> --updater <stamped-updater.exe> --package <app-package.zip> [--installer <updater-refresh-installer.exe>] [--output <release-manifest.json>] [--updater-update-required <true|false>]");
         builder.AppendLine("\tkit release --app-dir <app-dir-path> --config <stamp-config.json> --updater <blank-updater.exe> [--version <release-version>] [--output-dir <output-dir-path>] [--package-name <app-package.zip>] [--updater-update-required <true|false>] [--installer-command <command>] [--installer-args <args>] [--installer-path <installer-path>]");
         builder.AppendLine();
+        builder.AppendLine("Configuration:");
+        builder.AppendLine("\tkit reads .kitrc, .kitrc.yml, or .kitrc.yaml from the current directory or a parent directory.");
+        builder.AppendLine("\tValues in .kitrc act as defaults and are overridden by command-line options.");
+        builder.AppendLine();
         builder.AppendLine("Options:");
         builder.AppendLine("\t--help, -h    Show usage");
         return builder.ToString();
-    }
-
-    public static string GetRequiredOption(IReadOnlyDictionary<string, string> options, string key)
-    {
-        if (!options.TryGetValue(key, out var value) || string.IsNullOrWhiteSpace(value))
-        {
-            throw new InvalidOperationException("Missing required option --" + key);
-        }
-
-        return value;
     }
 
     private static Dictionary<string, string> ParseOptions(IEnumerable<string> args)
@@ -113,7 +110,8 @@ internal static class CommandLine
 
             string key;
             string value;
-            var    separatorIndex = argument.IndexOf('=');
+
+            var separatorIndex = argument.IndexOf('=');
             if (separatorIndex >= 0)
             {
                 key   = argument[2..separatorIndex];
@@ -144,8 +142,7 @@ internal static class CommandLine
         return options;
     }
 
-    private static bool IsHelp(string value)
-        => string.Equals(value, "--help", StringComparison.OrdinalIgnoreCase)
-           || string.Equals(value, "-h", StringComparison.OrdinalIgnoreCase)
-           || string.Equals(value, "help", StringComparison.OrdinalIgnoreCase);
+    private static bool IsHelp(string value) => string.Equals(value, "--help", StringComparison.OrdinalIgnoreCase)
+                                                || string.Equals(value, "-h", StringComparison.OrdinalIgnoreCase)
+                                                || string.Equals(value, "help", StringComparison.OrdinalIgnoreCase);
 }

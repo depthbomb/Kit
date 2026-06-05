@@ -6,14 +6,17 @@ internal static class ManifestCommand
 {
     public static int Run(RootCommand command)
     {
-        var releaseVersion    = CommandLine.GetRequiredOption(command.Options, "version");
-        var updaterPath       = CommandLine.GetRequiredOption(command.Options, "updater");
-        var packagePath       = CommandLine.GetRequiredOption(command.Options, "package");
-        var fullUpdaterPath   = Path.GetFullPath(updaterPath);
-        var fullPackagePath   = Path.GetFullPath(packagePath);
-        var outputDirectory = command.Options.TryGetValue("output", out var configuredOutput)
-            ? Path.GetFullPath(configuredOutput)
-            : Path.GetDirectoryName(fullUpdaterPath) ?? Environment.CurrentDirectory;
+        var releaseVersion = KitRcOptionResolver.GetRequiredValue(command, "version", section => section.Version);
+        var updaterPath    = KitRcOptionResolver.GetRequiredPath(command, "updater", section => section.Updater);
+        var packagePath    = KitRcOptionResolver.GetRequiredPath(command, "package", section => section.Package);
+        var fullUpdaterPath = updaterPath.ResolvePath();
+        var fullPackagePath = packagePath.ResolvePath();
+        var outputDirectory = KitRcOptionResolver.GetOptionalPath(
+                                 command,
+                                 "output",
+                                 section => section.Output,
+                                 new ResolvedOptionValue(Path.GetDirectoryName(fullUpdaterPath) ?? Environment.CurrentDirectory, null))
+                             .ResolvePath();
         var outputPath = Path.Combine(outputDirectory, "release-manifest.json");
 
         if (!File.Exists(fullUpdaterPath))
@@ -26,13 +29,13 @@ internal static class ManifestCommand
             throw new FileNotFoundException("Application package was not found.", fullPackagePath);
         }
 
-        var updaterUpdateRequired = command.Options.TryGetValue("updater-update-required", out var requiredText)
-                                    && ParseBoolean(requiredText, "updater-update-required");
+        var updaterUpdateRequired = KitRcOptionResolver.GetOptionalBoolean(command, "updater-update-required", section => section.UpdaterUpdateRequired);
 
         string? fullInstallerPath = null;
-        if (command.Options.TryGetValue("installer", out var installerPath) && !string.IsNullOrWhiteSpace(installerPath))
+        var installerPath = KitRcOptionResolver.GetOptionalValue(command, "installer", section => section.Installer, "");
+        if (!string.IsNullOrWhiteSpace(installerPath.Value))
         {
-            fullInstallerPath = Path.GetFullPath(installerPath);
+            fullInstallerPath = installerPath.ResolvePath();
             if (!File.Exists(fullInstallerPath))
             {
                 throw new FileNotFoundException("Updater refresh installer was not found.", fullInstallerPath);
@@ -44,7 +47,7 @@ internal static class ManifestCommand
         }
 
         var manifest = ReleaseManifestBuilder.Build(
-            releaseVersion,
+            releaseVersion.Value,
             fullUpdaterPath,
             fullPackagePath,
             fullInstallerPath,
@@ -61,15 +64,5 @@ internal static class ManifestCommand
         Console.WriteLine(outputPath);
 
         return 0;
-    }
-
-    private static bool ParseBoolean(string value, string optionName)
-    {
-        if (bool.TryParse(value, out var parsed))
-        {
-            return parsed;
-        }
-
-        throw new InvalidOperationException("Option --" + optionName + " must be either true or false.");
     }
 }

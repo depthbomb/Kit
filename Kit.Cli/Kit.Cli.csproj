@@ -16,6 +16,10 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="YamlDotNet" Version="18.0.0" />
+    </ItemGroup>
+
+    <ItemGroup>
         <Compile Include="..\Shared\UpdaterConfiguration.cs" Link="Shared\UpdaterConfiguration.cs"/>
         <Compile Include="..\Shared\StampPayload.cs" Link="Shared\StampPayload.cs" />
     </ItemGroup>

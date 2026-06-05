@@ -15,12 +15,18 @@ internal static class Program
                 return parseResult.ExitCode;
             }
 
-            return parseResult.Command!.Name switch
+            var kitRc   = KitRcLoader.TryLoadFromCurrentDirectory();
+            var command = parseResult.Command!;
+            var commandWithConfig = kitRc == null
+                ? command
+                : new RootCommand(command.Name, command.Options, kitRc);
+
+            return commandWithConfig.Name switch
             {
-                CommandName.Stamp    => StampCommand.Run(parseResult.Command),
-                CommandName.Inspect  => InspectCommand.Run(parseResult.Command),
-                CommandName.Manifest => ManifestCommand.Run(parseResult.Command),
-                CommandName.Release  => ReleaseCommand.Run(parseResult.Command),
+                CommandName.Stamp    => StampCommand.Run(commandWithConfig),
+                CommandName.Inspect  => InspectCommand.Run(commandWithConfig),
+                CommandName.Manifest => ManifestCommand.Run(commandWithConfig),
+                CommandName.Release  => ReleaseCommand.Run(commandWithConfig),
                 _                    => throw new InvalidOperationException("Unsupported command.")
             };
         }

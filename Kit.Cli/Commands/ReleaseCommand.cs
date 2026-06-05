@@ -7,13 +7,13 @@ internal static class ReleaseCommand
 {
     public static int Run(RootCommand command)
     {
-        var appDir      = CommandLine.GetRequiredOption(command.Options, "app-dir");
-        var configPath  = CommandLine.GetRequiredOption(command.Options, "config");
-        var updaterPath = CommandLine.GetRequiredOption(command.Options, "updater");
+        var appDir      = KitRcOptionResolver.GetRequiredPath(command, "app-dir", section => section.AppDir);
+        var configPath  = KitRcOptionResolver.GetRequiredPath(command, "config", section => section.Config);
+        var updaterPath = KitRcOptionResolver.GetRequiredPath(command, "updater", section => section.Updater);
 
-        var fullAppDir      = Path.GetFullPath(appDir);
-        var fullConfigPath  = Path.GetFullPath(configPath);
-        var fullUpdaterPath = Path.GetFullPath(updaterPath);
+        var fullAppDir      = appDir.ResolvePath();
+        var fullConfigPath  = configPath.ResolvePath();
+        var fullUpdaterPath = updaterPath.ResolvePath();
 
         if (!Directory.Exists(fullAppDir))
         {
@@ -35,9 +35,10 @@ internal static class ReleaseCommand
         var stampConfiguration = StampConfigurationLoader.Load(fullConfigPath);
 
         string version;
-        if (command.Options.TryGetValue("version", out var versionOpt) && !string.IsNullOrWhiteSpace(versionOpt))
+        var versionOption = KitRcOptionResolver.GetOptionalValue(command, "version", section => section.Version, "");
+        if (!string.IsNullOrWhiteSpace(versionOption.Value))
         {
-            version = versionOpt;
+            version = versionOption.Value;
         }
         else
         {
@@ -49,16 +50,16 @@ internal static class ReleaseCommand
         StampPayloadValidator.Validate(stampConfiguration, configDirectory);
 
         // 2. Resolve paths and Zip Application Payload
-        var outputDir     = command.Options.GetValueOrDefault("output-dir", "./out");
-        var packageName   = command.Options.GetValueOrDefault("package-name", "app-package.zip");
-        var fullOutputDir = Path.GetFullPath(outputDir);
+        var outputDir     = KitRcOptionResolver.GetOptionalValue(command, "output-dir", section => section.OutputDir, "./out");
+        var packageName   = KitRcOptionResolver.GetOptionalValue(command, "package-name", section => section.PackageName, "app-package.zip");
+        var fullOutputDir = outputDir.ResolvePath();
         if (IsSameOrChildPath(fullOutputDir, fullAppDir))
         {
             throw new InvalidOperationException("The output directory cannot be inside the application directory being zipped.");
         }
 
         Directory.CreateDirectory(fullOutputDir);
-        var zipPath = Path.Combine(fullOutputDir, packageName);
+        var zipPath = Path.Combine(fullOutputDir, packageName.Value);
 
         Console.WriteLine($"Zipping application directory '{fullAppDir}' to '{zipPath}'...");
         if (File.Exists(zipPath))
@@ -79,19 +80,21 @@ internal static class ReleaseCommand
         StampedUpdaterWriter.Write(fullUpdaterPath, fullUpdaterPath, payloadJson, buildResult.ResolvedIconPath);
 
         // 4. Execute Installer Compilation (Optional)
-        if (command.Options.TryGetValue("installer-command", out var installerCommand) && !string.IsNullOrWhiteSpace(installerCommand))
+        var installerCommand = KitRcOptionResolver.GetOptionalValue(command, "installer-command", section => section.InstallerCommand, "");
+        if (!string.IsNullOrWhiteSpace(installerCommand.Value))
         {
-            var installerArgs = command.Options.GetValueOrDefault("installer-args", "");
+            var installerArgs = KitRcOptionResolver.GetOptionalValue(command, "installer-args", section => section.InstallerArgs, "");
             var formattedArgs = installerArgs
+                                .Value
                                 .Replace("{Version}", version, StringComparison.OrdinalIgnoreCase)
                                 .Replace("{OutputDir}", fullOutputDir, StringComparison.OrdinalIgnoreCase)
                                 .Replace("{AppDir}", fullAppDir, StringComparison.OrdinalIgnoreCase);
 
-            Console.WriteLine($"Executing installer command: {installerCommand} {formattedArgs}");
+            Console.WriteLine($"Executing installer command: {installerCommand.Value} {formattedArgs}");
 
             var startInfo = new System.Diagnostics.ProcessStartInfo
             {
-                FileName               = installerCommand,
+                FileName               = installerCommand.Value,
                 Arguments              = formattedArgs,
                 UseShellExecute        = false,
                 RedirectStandardOutput = true,
@@ -112,7 +115,7 @@ internal static class ReleaseCommand
 
             if (!process.Start())
             {
-                throw new InvalidOperationException($"Failed to start installer compiler process: {installerCommand}");
+                throw new InvalidOperationException($"Failed to start installer compiler process: {installerCommand.Value}");
             }
 
             process.BeginOutputReadLine();
@@ -127,22 +130,22 @@ internal static class ReleaseCommand
 
         // 5. Generate Release Manifest
         string? resolvedInstallerPath = null;
-        if (command.Options.TryGetValue("installer-path", out var installerPathOption) && !string.IsNullOrWhiteSpace(installerPathOption))
+        var installerPathOption = KitRcOptionResolver.GetOptionalValue(command, "installer-path", section => section.InstallerPath, "");
+        if (!string.IsNullOrWhiteSpace(installerPathOption.Value))
         {
-            var formattedPath = installerPathOption
+            var formattedPath = installerPathOption.Value
                                 .Replace("{Version}", version, StringComparison.OrdinalIgnoreCase)
                                 .Replace("{OutputDir}", fullOutputDir, StringComparison.OrdinalIgnoreCase)
                                 .Replace("{AppDir}", fullAppDir, StringComparison.OrdinalIgnoreCase);
 
-            resolvedInstallerPath = Path.GetFullPath(formattedPath);
+            resolvedInstallerPath = KitRcPathResolver.ResolvePath(formattedPath, installerPathOption.BaseDirectory);
             if (!File.Exists(resolvedInstallerPath))
             {
                 throw new FileNotFoundException("The specified installer file was not found.", resolvedInstallerPath);
             }
         }
 
-        var updaterUpdateRequired = command.Options.TryGetValue("updater-update-required", out var requiredText)
-                                    && ParseBoolean(requiredText, "updater-update-required");
+        var updaterUpdateRequired = KitRcOptionResolver.GetOptionalBoolean(command, "updater-update-required", section => section.UpdaterUpdateRequired);
 
         var manifest = ReleaseManifestBuilder.Build(
             version,
@@ -214,16 +217,6 @@ internal static class ReleaseCommand
         }
 
         throw new InvalidOperationException($"Could not auto-detect version. LaunchExecutable file not found or contains no version info at: {directPath}");
-    }
-
-    private static bool ParseBoolean(string value, string optionName)
-    {
-        if (bool.TryParse(value, out var parsed))
-        {
-            return parsed;
-        }
-
-        throw new InvalidOperationException("Option --" + optionName + " must be either true or false.");
     }
 
     private static bool IsSameOrChildPath(string candidatePath, string parentPath)

@@ -33,6 +33,10 @@ kit manifest --version <release-version> --updater <stamped-updater.exe> --packa
 kit release --app-dir <app-dir-path> --config <stamp-config.json> --updater <blank-updater.exe> [--version <release-version>] [--output-dir <output-dir-path>] [--package-name <app-package.zip>] [--updater-update-required <true|false>] [--installer-command <command>] [--installer-args <args>] [--installer-path <installer-path>]
 ```
 
+The CLI also reads `.kitrc`, `.kitrc.yml`, or `.kitrc.yaml` from the current directory or any parent directory. Values in that file act as defaults and can still be overridden on the command line.
+
+See `.kitrc.sample.yaml` for a ready-made example.
+
 ### `stamp`
 
 Writes the stamped updater executable. If `--output` is omitted, the input file is overwritten.
@@ -89,6 +93,12 @@ Example:
   --installer-command "iscc.exe" `
   --installer-args ".\installer.iss /DAppVersion={Version} /DOutputDir={OutputDir}" `
   --installer-path "{OutputDir}\MyApp-Setup.exe"
+```
+
+With a populated `.kitrc`, the same release can usually shrink to:
+
+```powershell
+.\kit.exe release
 ```
 
 ## Stamp Configuration

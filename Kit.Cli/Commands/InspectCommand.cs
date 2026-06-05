@@ -7,8 +7,8 @@ internal static class InspectCommand
 {
     public static int Run(RootCommand command)
     {
-        var inputPath     = CommandLine.GetRequiredOption(command.Options, "input");
-        var fullInputPath = Path.GetFullPath(inputPath);
+        var inputPath     = KitRcOptionResolver.GetRequiredPath(command, "input", section => section.Input);
+        var fullInputPath = inputPath.ResolvePath();
         if (!File.Exists(fullInputPath))
         {
             throw new FileNotFoundException("Input updater binary was not found.", fullInputPath);
