@@ -118,20 +118,31 @@ internal sealed class GitHubUpdateSource : IUpdateSource
 
             foreach (var releaseObject in releases.OfType<Dictionary<string, object>>())
             {
-                var update = await TryResolveReleaseAsync(releaseObject, serializer, ct).ConfigureAwait(false);
-                if (update != null)
+                if (IsSkippedRelease(releaseObject, _configuration.IncludePrerelease))
                 {
-                    return update;
+                    continue;
                 }
+
+                var update = await TryResolveReleaseAsync(releaseObject, serializer, ct).ConfigureAwait(false);
+
+                return update
+                       ?? throw new InvalidOperationException("The newest eligible GitHub release could not be resolved into an update.");
             }
         }
     }
 
-    private async Task<AvailableUpdate?> TryResolveReleaseAsync(Dictionary<string, object> releaseObject, JavaScriptSerializer serializer, CancellationToken ct)
+    private static bool IsSkippedRelease(Dictionary<string, object> releaseObject, bool includePrerelease)
     {
         var isDraft      = UpdateSourceParsing.ReadBoolean(releaseObject, "draft");
         var isPrerelease = UpdateSourceParsing.ReadBoolean(releaseObject, "prerelease");
-        if (isDraft || isPrerelease && !_configuration.IncludePrerelease)
+
+        return isDraft || isPrerelease && !includePrerelease;
+    }
+
+    private async Task<AvailableUpdate?> TryResolveReleaseAsync(Dictionary<string, object> releaseObject, JavaScriptSerializer serializer, CancellationToken ct)
+    {
+        var isPrerelease = UpdateSourceParsing.ReadBoolean(releaseObject, "prerelease");
+        if (isPrerelease && !_configuration.IncludePrerelease)
         {
             return null;
         }
@@ -165,9 +176,7 @@ internal sealed class GitHubUpdateSource : IUpdateSource
         {
             return ReleaseManifestResolver.ResolveAvailableUpdate(manifest, fileName =>
             {
-                var targetAsset = assetList.FirstOrDefault(
-                    a => string.Equals(UpdateSourceParsing.ReadString(a, "name"), fileName, StringComparison.OrdinalIgnoreCase)
-                );
+                var targetAsset = assetList.FirstOrDefault(a => string.Equals(UpdateSourceParsing.ReadString(a, "name"), fileName, StringComparison.OrdinalIgnoreCase));
                 return targetAsset == null ? null : UpdateSourceParsing.ReadString(targetAsset, "browser_download_url");
             });
         }
