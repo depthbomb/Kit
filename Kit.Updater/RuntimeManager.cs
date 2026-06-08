@@ -8,6 +8,12 @@ internal sealed class RuntimeManager
 {
     private readonly UpdaterConfiguration _configuration;
 
+    private static List<InstalledRuntime>? _installedRuntimesCache;
+
+    private static readonly SemaphoreSlim InstalledRuntimesCacheGate = new(1, 1);
+    private static readonly Regex InstalledRuntimeLineRegex = new(@"^(?<name>[\w\.]+) (?<version>[\d\.\w\-]+) \[(?<path>.*)\]$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
     public RuntimeManager(UpdaterConfiguration configuration)
     {
         _configuration = configuration;
@@ -44,9 +50,20 @@ internal sealed class RuntimeManager
 
     private async Task<List<InstalledRuntime>> GetInstalledRuntimesAsync(CancellationToken ct)
     {
-        var runtimes = new List<InstalledRuntime>();
+        if (_installedRuntimesCache != null)
+        {
+            return _installedRuntimesCache;
+        }
+
+        await InstalledRuntimesCacheGate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
+            if (_installedRuntimesCache != null)
+            {
+                return _installedRuntimesCache;
+            }
+
+            var runtimes = new List<InstalledRuntime>();
             var startInfo = new ProcessStartInfo
             {
                 FileName               = "dotnet",
@@ -58,32 +75,44 @@ internal sealed class RuntimeManager
             };
 
             var result = await ProcessExecution.RunAsync(startInfo, ct).ConfigureAwait(false);
-            if (result.ExitCode != 0)
+            if (result.ExitCode == 0)
             {
-                return runtimes;
-            }
-
-            var lines = result.StandardOutput.Split([Environment.NewLine], StringSplitOptions.RemoveEmptyEntries);
-            foreach (var line in lines)
-            {
-                var match = Regex.Match(line, @"^(?<name>[\w\.]+) (?<version>[\d\.\w\-]+) \[(?<path>.*)\]$");
-                if (match.Success)
+                using var reader = new StringReader(result.StandardOutput);
+                while (await reader.ReadLineAsync() is { } line)
                 {
-                    var name        = match.Groups["name"].Value;
-                    var versionText = match.Groups["version"].Value;
-                    if (ApplicationVersion.TryParse(versionText, out var version))
+                    if (line.Length == 0)
                     {
-                        runtimes.Add(new InstalledRuntime(name, version!));
+                        continue;
+                    }
+
+                    var match = InstalledRuntimeLineRegex.Match(line);
+                    if (match.Success)
+                    {
+                        var name        = match.Groups["name"].Value;
+                        var versionText = match.Groups["version"].Value;
+                        if (ApplicationVersion.TryParse(versionText, out var version))
+                        {
+                            runtimes.Add(new InstalledRuntime(name, version!));
+                        }
                     }
                 }
             }
+
+            _installedRuntimesCache = runtimes;
+
+            return runtimes;
         }
         catch
         {
             // If dotnet is not installed or command fails, assume none are installed.
-        }
+            _installedRuntimesCache = [];
 
-        return runtimes;
+            return _installedRuntimesCache;
+        }
+        finally
+        {
+            InstalledRuntimesCacheGate.Release();
+        }
     }
 
     public async Task DownloadAndInstallRuntimeAsync(RequiredRuntimeConfiguration    runtime,
