@@ -30,12 +30,17 @@ internal static class ReleaseCommand
             throw new FileNotFoundException("Blank updater executable was not found.", fullUpdaterPath);
         }
 
+        var versionOption = KitRcOptionResolver.GetOptionalValue(command, "version", section => section.Version, "");
+        if (!string.IsNullOrWhiteSpace(versionOption.Value) && !StampVersion.TryParse(versionOption.Value))
+        {
+            throw new InvalidOperationException("--version must be a valid version string.");
+        }
+
         // 1. Resolve and Auto-Detect Version
         var configDirectory    = Path.GetDirectoryName(fullConfigPath) ?? Environment.CurrentDirectory;
         var stampConfiguration = StampConfigurationLoader.Load(fullConfigPath);
 
         string version;
-        var versionOption = KitRcOptionResolver.GetOptionalValue(command, "version", section => section.Version, "");
         if (!string.IsNullOrWhiteSpace(versionOption.Value))
         {
             version = versionOption.Value;
