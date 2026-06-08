@@ -76,63 +76,76 @@ internal sealed class GitHubUpdateSource : IUpdateSource
             throw new InvalidOperationException("The GitHub repository is not configured.");
         }
 
-        var repository       = _configuration.Repository.Trim();
-        var releasesEndpoint = "https://api.github.com/repos/" + repository + "/releases";
-        var json             = await UpdateSourceHttp.GetStringAsync(releasesEndpoint, ct).ConfigureAwait(false);
-        var serializer       = new JavaScriptSerializer();
-        if (serializer.DeserializeObject(json) is not object[] releases)
+        var repository = _configuration.Repository.Trim();
+        var serializer = new JavaScriptSerializer();
+
+        for (var page = 1; ; page++)
         {
-            throw new InvalidOperationException("The GitHub API did not return a valid releases payload.");
-        }
+            var releasesEndpoint = BuildReleasesEndpoint(repository, page);
+            var json             = await UpdateSourceHttp.GetStringAsync(releasesEndpoint, ct).ConfigureAwait(false);
 
-        foreach (var releaseObject in releases.OfType<Dictionary<string, object>>())
-        {
-            var isDraft      = UpdateSourceParsing.ReadBoolean(releaseObject, "draft");
-            var isPrerelease = UpdateSourceParsing.ReadBoolean(releaseObject, "prerelease");
-            if (isDraft || isPrerelease && !_configuration.IncludePrerelease)
+            if (serializer.DeserializeObject(json) is not object[] releases)
             {
-                continue;
+                throw new InvalidOperationException("The GitHub API did not return a valid releases payload.");
             }
 
-            if (!(releaseObject.TryGetValue("assets", out var assetsObject) && assetsObject is object[] assets))
+            if (releases.Length == 0)
             {
-                continue;
+                return null;
             }
 
-            var assetList     = assets.OfType<Dictionary<string, object>>().ToList();
-            var manifestAsset = assetList.FirstOrDefault(a => string.Equals(UpdateSourceParsing.ReadString(a, "name"), "release-manifest.json", StringComparison.OrdinalIgnoreCase));
-
-            if (manifestAsset == null)
+            foreach (var releaseObject in releases.OfType<Dictionary<string, object>>())
             {
-                continue;
-            }
-
-            var manifestUrl = UpdateSourceParsing.ReadString(manifestAsset, "browser_download_url");
-            if (string.IsNullOrWhiteSpace(manifestUrl))
-            {
-                continue;
-            }
-
-            var manifestJson = await UpdateSourceHttp.GetStringAsync(manifestUrl!, ct).ConfigureAwait(false);
-            var manifest     = serializer.Deserialize<ReleaseManifest>(manifestJson);
-            if (manifest == null)
-            {
-                continue;
-            }
-
-            try
-            {
-                return ReleaseManifestResolver.ResolveAvailableUpdate(manifest, fileName =>
+                var isDraft      = UpdateSourceParsing.ReadBoolean(releaseObject, "draft");
+                var isPrerelease = UpdateSourceParsing.ReadBoolean(releaseObject, "prerelease");
+                if (isDraft || isPrerelease && !_configuration.IncludePrerelease)
                 {
-                    var targetAsset = assetList.FirstOrDefault(a => string.Equals(UpdateSourceParsing.ReadString(a, "name"), fileName, StringComparison.OrdinalIgnoreCase));
-                    return targetAsset == null ? null : UpdateSourceParsing.ReadString(targetAsset, "browser_download_url");
-                });
-            }
-            catch (InvalidOperationException) { }
-        }
+                    continue;
+                }
 
-        return null;
+                if (!(releaseObject.TryGetValue("assets", out var assetsObject) && assetsObject is object[] assets))
+                {
+                    continue;
+                }
+
+                var assetList     = assets.OfType<Dictionary<string, object>>().ToList();
+                var manifestAsset = assetList.FirstOrDefault(a => string.Equals(UpdateSourceParsing.ReadString(a, "name"), "release-manifest.json", StringComparison.OrdinalIgnoreCase));
+
+                if (manifestAsset == null)
+                {
+                    continue;
+                }
+
+                var manifestUrl = UpdateSourceParsing.ReadString(manifestAsset, "browser_download_url");
+                if (string.IsNullOrWhiteSpace(manifestUrl))
+                {
+                    continue;
+                }
+
+                var manifestJson = await UpdateSourceHttp.GetStringAsync(manifestUrl!, ct).ConfigureAwait(false);
+                var manifest     = serializer.Deserialize<ReleaseManifest>(manifestJson);
+                if (manifest == null)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    return ReleaseManifestResolver.ResolveAvailableUpdate(manifest, fileName =>
+                    {
+                        var targetAsset = assetList.FirstOrDefault(
+                            a => string.Equals(UpdateSourceParsing.ReadString(a, "name"), fileName, StringComparison.OrdinalIgnoreCase)
+                        );
+                        return targetAsset == null ? null : UpdateSourceParsing.ReadString(targetAsset, "browser_download_url");
+                    });
+                }
+                catch (InvalidOperationException) { }
+            }
+        }
     }
+
+    private static string BuildReleasesEndpoint(string repository, int page)
+        => $"https://api.github.com/repos/{repository}/releases?per_page=100&page={page}";
 }
 
 internal static class UpdateSourceHttp
