@@ -59,7 +59,13 @@ internal static class ReleaseCommand
         }
 
         Directory.CreateDirectory(fullOutputDir);
-        var zipPath = Path.Combine(fullOutputDir, packageName.Value);
+        var packageFileName = Path.GetFileName(packageName.Value);
+        if (!string.Equals(packageFileName, packageName.Value, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("--package-name must be a file name, not a path.");
+        }
+
+        var zipPath = Path.Combine(fullOutputDir, packageFileName);
 
         Console.WriteLine($"Zipping application directory '{fullAppDir}' to '{zipPath}'...");
         if (File.Exists(zipPath))
