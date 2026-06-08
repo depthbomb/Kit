@@ -6,12 +6,12 @@ namespace Kit.Updater;
 
 internal sealed class RuntimeManager
 {
+    private List<InstalledRuntime>? _installedRuntimesCache;
+
     private readonly UpdaterConfiguration _configuration;
 
-    private static List<InstalledRuntime>? _installedRuntimesCache;
-
-    private static readonly SemaphoreSlim InstalledRuntimesCacheGate = new(1, 1);
-    private static readonly Regex InstalledRuntimeLineRegex = new(@"^(?<name>[\w\.]+) (?<version>[\d\.\w\-]+) \[(?<path>.*)\]$",
+    private readonly SemaphoreSlim _installedRuntimesCacheGate = new(1, 1);
+    private readonly Regex _installedRuntimeLineRegex = new(@"^(?<name>[\w\.]+) (?<version>[\d\.\w\-]+) \[(?<path>.*)\]$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     public RuntimeManager(UpdaterConfiguration configuration)
@@ -55,7 +55,7 @@ internal sealed class RuntimeManager
             return _installedRuntimesCache;
         }
 
-        await InstalledRuntimesCacheGate.WaitAsync(ct).ConfigureAwait(false);
+        await _installedRuntimesCacheGate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             if (_installedRuntimesCache != null)
@@ -85,7 +85,7 @@ internal sealed class RuntimeManager
                         continue;
                     }
 
-                    var match = InstalledRuntimeLineRegex.Match(line);
+                    var match = _installedRuntimeLineRegex.Match(line);
                     if (match.Success)
                     {
                         var name        = match.Groups["name"].Value;
@@ -111,7 +111,7 @@ internal sealed class RuntimeManager
         }
         finally
         {
-            InstalledRuntimesCacheGate.Release();
+            _installedRuntimesCacheGate.Release();
         }
     }
 
@@ -143,6 +143,8 @@ internal sealed class RuntimeManager
             {
                 throw new InvalidOperationException($"Runtime installer failed with exit code {result.ExitCode}.");
             }
+
+            _installedRuntimesCache = null;
         }
         finally
         {
