@@ -231,4 +231,15 @@ internal sealed class ReleasePackageReference
     public string FileName { get; set; } = string.Empty;
 
     public string Sha256 { get; set; } = string.Empty;
+
+    public List<ReleasePackageFileReference> Files { get; set; } = [];
+}
+
+internal sealed class ReleasePackageFileReference
+{
+    public string Path { get; set; } = string.Empty;
+
+    public string Sha512 { get; set; } = string.Empty;
+
+    public long Size { get; set; }
 }

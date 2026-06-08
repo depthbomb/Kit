@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using System.IO.Compression;
 
 namespace Kit.Cli.Commands;

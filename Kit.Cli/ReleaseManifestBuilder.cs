@@ -1,12 +1,17 @@
-﻿using Shared;
+using Shared;
 using System.Text.Json;
+using System.IO.Compression;
 using System.Security.Cryptography;
 
 namespace Kit.Cli;
 
 internal static class ReleaseManifestBuilder
 {
-    public static ReleaseManifest Build(string version, string updaterPath, string packagePath, string? installerPath, bool updaterUpdateRequired)
+    public static ReleaseManifest Build(string version,
+                                        string updaterPath,
+                                        string packagePath,
+                                        string? installerPath,
+                                        bool updaterUpdateRequired)
     {
         var payloadJson = StampPayload.ReadConfigurationJson(updaterPath);
         var payload = JsonSerializer.Deserialize<UpdaterConfiguration>(payloadJson, new JsonSerializerOptions
@@ -54,8 +59,39 @@ internal static class ReleaseManifestBuilder
     {
         Kind     = kind,
         FileName = Path.GetFileName(path),
-        Sha256   = ComputeSha256(path)
+        Sha256   = ComputeSha256(path),
+        Files    = IsZipArchive(path) ? BuildFileReferences(path) : []
     };
+
+    private static bool IsZipArchive(string path) => string.Equals(Path.GetExtension(path), ".zip", StringComparison.OrdinalIgnoreCase);
+
+    private static List<ReleasePackageFileReference> BuildFileReferences(string zipPath)
+    {
+        var files = new List<ReleasePackageFileReference>();
+
+        using var archive = ZipFile.OpenRead(zipPath);
+        foreach (var entry in archive.Entries)
+        {
+            if (string.IsNullOrEmpty(entry.Name) || entry.FullName.EndsWith('/') || entry.FullName.EndsWith('\\'))
+            {
+                continue;
+            }
+
+            using var entryStream = entry.Open();
+            using var algorithm   = SHA512.Create();
+            var hashBytes         = algorithm.ComputeHash(entryStream);
+
+            files.Add(new ReleasePackageFileReference
+            {
+                Path   = entry.FullName,
+                Sha512 = Convert.ToHexString(hashBytes).ToLowerInvariant(),
+                Size   = entry.Length
+            });
+        }
+
+        files.Sort((left, right) => string.Compare(left.Path, right.Path, StringComparison.Ordinal));
+        return files;
+    }
 
     private static string ComputeSha256(string path)
     {

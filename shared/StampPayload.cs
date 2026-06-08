@@ -113,14 +113,6 @@ internal static class StampPayload
             return false;
         }
 
-        for (int i = 0; i < left.Length; i++)
-        {
-            if (left[i] != right[i])
-            {
-                return false;
-            }
-        }
-
-        return true;
+        return !left.Where((t, i) => t != right[i]).Any();
     }
 }

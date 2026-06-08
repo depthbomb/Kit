@@ -49,6 +49,7 @@ internal static class ReleaseManifestResolver
             manifest.Download.Sha256,
             isUpdaterUpdate,
             appPackageUrl,
-            appPackageSha256);
+            appPackageSha256,
+            manifest.ApplicationPackage.Files);
     }
 }

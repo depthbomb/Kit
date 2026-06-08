@@ -20,21 +20,23 @@ internal sealed class LocalApplicationInstallation
 
 internal sealed class AvailableUpdate
 {
-    public AvailableUpdate(ApplicationVersion version,
-                           string             downloadUrl,
-                           string             displayVersion,
-                           string             sha256,
-                           bool               isUpdaterUpdate               = false,
-                           string?            applicationPackageDownloadUrl = null,
-                           string?            applicationPackageSha256      = null)
+    public AvailableUpdate(ApplicationVersion                          version,
+                           string                                      downloadUrl,
+                           string                                      displayVersion,
+                           string                                      sha256,
+                           bool                                        isUpdaterUpdate               = false,
+                           string?                                     applicationPackageDownloadUrl = null,
+                           string?                                     applicationPackageSha256      = null,
+                           IReadOnlyList<ReleasePackageFileReference>? applicationPackageFiles       = null)
     {
         Version                       = version;
         DownloadUrl                   = downloadUrl;
         DisplayVersion                = displayVersion;
         Sha256                        = sha256;
         IsUpdaterUpdate               = isUpdaterUpdate;
-        ApplicationPackageDownloadUrl = applicationPackageDownloadUrl ?? string.Empty;
-        ApplicationPackageSha256      = applicationPackageSha256      ?? string.Empty;
+        ApplicationPackageDownloadUrl = applicationPackageDownloadUrl      ?? string.Empty;
+        ApplicationPackageSha256      = applicationPackageSha256           ?? string.Empty;
+        ApplicationPackageFiles       = applicationPackageFiles?.ToArray() ?? [];
     }
 
     public ApplicationVersion Version { get; private set; }
@@ -52,6 +54,9 @@ internal sealed class AvailableUpdate
 
     /// <summary>The SHA-256 checksum of the app package ZIP.</summary>
     public string ApplicationPackageSha256 { get; private set; }
+
+    /// <summary>The per-file integrity metadata for the app package ZIP.</summary>
+    public IReadOnlyList<ReleasePackageFileReference> ApplicationPackageFiles { get; private set; }
 }
 
 internal sealed class UpdateCheckResult
@@ -175,7 +180,8 @@ internal sealed class UpdaterRuntime
                     availableUpdate.ApplicationPackageDownloadUrl,
                     availableUpdate.DisplayVersion,
                     availableUpdate.ApplicationPackageSha256,
-                    isUpdaterUpdate: false);
+                    isUpdaterUpdate: false,
+                    applicationPackageFiles: availableUpdate.ApplicationPackageFiles);
             }
             else
             {
@@ -245,6 +251,10 @@ internal sealed class UpdaterRuntime
 
             await _archiveExtractor.ExtractAsync(tempArchivePath, archiveExtension, extractedDirectory, ct).ConfigureAwait(false);
             _installationPreparer.CompressIfEnabled(extractedDirectory, update.Version.NormalizedValue, progress);
+
+            Report(progress, InstallationPhase.ValidatingInstallation, update.Version.NormalizedValue);
+
+            _installationPreparer.VerifyPostExtractIntegrity(extractedDirectory, update.ApplicationPackageFiles);
 
             Report(progress, InstallationPhase.PreparingFiles, update.Version.NormalizedValue);
 

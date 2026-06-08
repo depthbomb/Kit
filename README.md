@@ -244,7 +244,14 @@ Current manifest shape:
   "applicationPackage": {
     "kind": "application",
     "fileName": "MyApp-1.1.0.zip",
-    "sha256": "..."
+    "sha256": "...",
+    "files": [
+      {
+        "path": "MyApp.exe",
+        "sha512": "...",
+        "size": 123456
+      }
+    ]
   },
   "updaterPackage": {
     "kind": "installer",
@@ -259,6 +266,7 @@ Behavior:
 - If `updaterUpdateRequired` is `false`, `download` points at the normal app package.
 - If `updaterUpdateRequired` is `true`, `download` points at the updater-refresh installer.
 - After an updater-refresh install, the stamped `updaterVersion` prevents the updater from looping back into the same installer release and allows it to fall back to the app package from the same manifest.
+- For ZIP application packages, the CLI always includes per-file integrity data under `applicationPackage.files`. When integrity verification is enabled, the updater checks each extracted file's size and SHA-512 hash against this manifest.
 
 For GitHub sources, the updater reads the latest eligible release, looks for a `release-manifest.json` asset, then resolves the referenced package asset by file name.
 
