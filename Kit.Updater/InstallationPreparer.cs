@@ -60,7 +60,7 @@ internal sealed class InstallationPreparer
                     return extractedDirectory;
                 }
 
-                if (singleRootDirectory != null && File.Exists(launchPathAtSingleRoot) || singleRootDirectory != null)
+                if (singleRootDirectory != null)
                 {
                     return singleRootDirectory;
                 }
