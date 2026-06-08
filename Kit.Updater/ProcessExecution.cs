@@ -77,12 +77,22 @@ internal static class ProcessExecution
             return Task.CompletedTask;
         }
 
-        ct.Register(() => taskCompletionSource.TrySetCanceled(ct));
+        return WaitForExitCoreAsync(process, handler, taskCompletionSource, ct);
+    }
 
-        return taskCompletionSource.Task.ContinueWith(task =>
+    private static async Task WaitForExitCoreAsync(Process                    process,
+                                                   EventHandler               handler,
+                                                   TaskCompletionSource<bool> taskCompletionSource,
+                                                   CancellationToken          ct)
+    {
+        using var cancellationRegistration = ct.Register(() => taskCompletionSource.TrySetCanceled(ct));
+        try
+        {
+            await taskCompletionSource.Task.ConfigureAwait(false);
+        }
+        finally
         {
             process.Exited -= handler;
-            return task;
-        }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default).Unwrap();
+        }
     }
 }
