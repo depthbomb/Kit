@@ -47,14 +47,16 @@ public static class NtfsCompressor
     {
         CompressDirectory(rootPath);
 
-        foreach (string directory in Directory.EnumerateDirectories(rootPath, "*", SearchOption.AllDirectories))
+        foreach (string entry in Directory.EnumerateFileSystemEntries(rootPath, "*", SearchOption.AllDirectories))
         {
-            CompressDirectory(directory);
-        }
-
-        foreach (string file in Directory.EnumerateFiles(rootPath, "*", SearchOption.AllDirectories))
-        {
-            CompressFile(file);
+            if ((File.GetAttributes(entry) & FileAttributes.Directory) != 0)
+            {
+                CompressDirectory(entry);
+            }
+            else
+            {
+                CompressFile(entry);
+            }
         }
     }
 
