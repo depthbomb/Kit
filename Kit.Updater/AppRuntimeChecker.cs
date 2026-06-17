@@ -128,23 +128,25 @@ internal static class AppRuntimeChecker
 
     private static Version? TryExtractVersion(string packageName)
     {
-        // Microsoft.WindowsAppRuntime.X_2.1.3.0_x64__...
+        // The semantic version (Major.Minor) is encoded in the package family name itself, as the suffix after
+        // "Microsoft.WindowsAppRuntime." and before the first '_'. The field between the first and second '_' is an
+        // internal build number (e.g. 8000.879.2017.0) and must NOT be used for version comparison - it is always
+        // numerically much larger than any semantic version, which would cause the installed check to always pass
+        // falsely.
 
-        var firstUnderscore = packageName.IndexOf('_');
-        if (firstUnderscore < 0 || firstUnderscore == packageName.Length - 1)
-            return null;
+        const string prefix = "Microsoft.WindowsAppRuntime.";
 
-        var remainder = packageName.Substring(firstUnderscore + 1);
+        // Strip the known prefix to get e.g. "1.8_8000.879.2017.0_x64__8wekyb3d8bbwe"
+        var rest = packageName.Substring(prefix.Length);
 
-        var secondUnderscore = remainder.IndexOf('_');
-        if (secondUnderscore < 0)
-            return null;
+        // The part before the first underscore is the semantic version e.g. "1.8" CBS/Main/other non-framework
+        // sub-packages have non-numeric names here (e.g. "CBS.1.6") and will be correctly rejected by Version.TryParse.
+        var firstUnderscore = rest.IndexOf('_');
+        var versionPart     = firstUnderscore >= 0 ? rest.Substring(0, firstUnderscore) : rest;
 
-        var versionString = remainder.Substring(0, secondUnderscore);
-
-        return Version.TryParse(versionString, out var v) ? v : null;
+        return Version.TryParse(versionPart, out var v) ? v : null;
     }
 
     private static string GetDownloadUrl(Version version)
-        => $"https://aka.ms/windowsappsdk/{version.Major}.{version.Minor}/latest/windowsappruntimeinstall-x64.exe";
+        => $"https://aka.ms/windowsappsdk/{version.Major}.{version.Minor}/{version}/windowsappruntimeinstall-x64.exe";
 }
