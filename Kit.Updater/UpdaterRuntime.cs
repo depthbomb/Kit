@@ -268,11 +268,11 @@ internal sealed class UpdaterRuntime
             Report(progress, InstallationPhase.ExtractingArchive, update.Version.NormalizedValue);
 
             await _archiveExtractor.ExtractAsync(tempArchivePath, archiveExtension, extractedDirectory, ct).ConfigureAwait(false);
-            _installationPreparer.CompressIfEnabled(extractedDirectory, update.Version.NormalizedValue, progress);
+            _installationPreparer.CompressIfEnabled(extractedDirectory, update.Version.NormalizedValue, progress, ct);
 
             Report(progress, InstallationPhase.ValidatingInstallation, update.Version.NormalizedValue);
 
-            _installationPreparer.VerifyPostExtractIntegrity(extractedDirectory, update.ApplicationPackageFiles);
+            _installationPreparer.VerifyPostExtractIntegrity(extractedDirectory, update.ApplicationPackageFiles, ct);
 
             Report(progress, InstallationPhase.PreparingFiles, update.Version.NormalizedValue);
 

@@ -49,7 +49,15 @@ internal sealed class UpdateDownloader
         using (var stream = new FileStream(archivePath, FileMode.Open, FileAccess.Read, FileShare.Read))
         using (var algorithm = SHA256.Create())
         {
-            var hashBytes = await Task.Run(() => algorithm.ComputeHash(stream), ct).ConfigureAwait(false);
+            var buffer = new byte[81920];
+            int bytesRead;
+            while ((bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length, ct).ConfigureAwait(false)) > 0)
+            {
+                algorithm.TransformBlock(buffer, 0, bytesRead, buffer, 0);
+            }
+
+            algorithm.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+            var hashBytes = algorithm.Hash!;
             actualHash = BitConverter.ToString(hashBytes).Replace("-", string.Empty);
         }
 

@@ -12,7 +12,10 @@ internal sealed class InstallationPreparer
         _configuration = configuration;
     }
 
-    public void CompressIfEnabled(string extractedDirectory, string version, IProgress<InstallationProgress>? progress)
+    public void CompressIfEnabled(string                           extractedDirectory,
+                                  string                           version,
+                                  IProgress<InstallationProgress>? progress,
+                                  CancellationToken                ct)
     {
         if (!_configuration.Installation.CompressFiles)
         {
@@ -20,7 +23,7 @@ internal sealed class InstallationPreparer
         }
 
         progress?.Report(new InstallationProgress(InstallationPhase.CompressingFiles, version, null, null));
-        NtfsCompressor.CompressDirectoryRecursive(extractedDirectory);
+        NtfsCompressor.CompressDirectoryRecursive(extractedDirectory, ct);
     }
 
     public void PrepareExtractedFiles(string extractedDirectory, string preparedDirectory)
@@ -43,7 +46,9 @@ internal sealed class InstallationPreparer
         }
     }
 
-    public void VerifyPostExtractIntegrity(string extractedDirectory, IEnumerable<ReleasePackageFileReference>? files)
+    public void VerifyPostExtractIntegrity(string                                    extractedDirectory,
+                                           IEnumerable<ReleasePackageFileReference>? files,
+                                           CancellationToken                         ct)
     {
         if (!_configuration.Installation.RequireIntegrityVerification)
         {
@@ -68,6 +73,7 @@ internal sealed class InstallationPreparer
 
         foreach (var fileEntry in fileEntries)
         {
+            ct.ThrowIfCancellationRequested();
             var rawPath = fileEntry.Path.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
 
             if (string.IsNullOrWhiteSpace(rawPath))
@@ -106,7 +112,7 @@ internal sealed class InstallationPreparer
                 throw new InvalidOperationException($"Post-extraction verification failed for {relativePath}. File size mismatch.");
             }
 
-            var actualHash = ComputeSha512(filePath);
+            var actualHash = ComputeSha512(filePath, ct);
             if (!string.Equals(actualHash, NormalizeHex(fileEntry.Sha512), StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException($"Post-extraction verification failed for {relativePath}. SHA-512 checksum mismatch.");
@@ -156,12 +162,21 @@ internal sealed class InstallationPreparer
         }
     }
 
-    private static string ComputeSha512(string filePath)
+    private static string ComputeSha512(string filePath, CancellationToken ct)
     {
         using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
         using var sha512 = SHA512.Create();
 
-        var hashBytes = sha512.ComputeHash(stream);
+        var buffer = new byte[81920];
+        int bytesRead;
+        while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
+        {
+            ct.ThrowIfCancellationRequested();
+            sha512.TransformBlock(buffer, 0, bytesRead, buffer, 0);
+        }
+
+        sha512.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+        var hashBytes = sha512.Hash!;
         return BitConverter.ToString(hashBytes).Replace("-", string.Empty).ToLowerInvariant();
     }
 

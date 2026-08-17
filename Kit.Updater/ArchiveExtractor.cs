@@ -47,7 +47,41 @@ internal sealed class ArchiveExtractor
             throw new InvalidOperationException("Unsupported update archive format: " + archiveExtension + ". Ship bin\\7za.exe next to the updater to enable external extraction.");
         }
 
-        ZipFile.ExtractToDirectory(archivePath, destinationDirectory);
+        await ExtractZipAsync(archivePath, destinationDirectory, ct).ConfigureAwait(false);
+    }
+
+    private static async Task ExtractZipAsync(string archivePath, string destinationDirectory, CancellationToken ct)
+    {
+        var destinationRoot = Path.GetFullPath(destinationDirectory)
+                                  .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                              + Path.DirectorySeparatorChar;
+
+        using (var archive = ZipFile.OpenRead(archivePath))
+        {
+            foreach (var entry in archive.Entries)
+            {
+                ct.ThrowIfCancellationRequested();
+
+                var destinationPath = Path.GetFullPath(Path.Combine(destinationRoot, entry.FullName));
+                if (!destinationPath.StartsWith(destinationRoot, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidDataException("The update archive contains a path outside the extraction directory: " + entry.FullName);
+                }
+
+                if (string.IsNullOrEmpty(entry.Name))
+                {
+                    Directory.CreateDirectory(destinationPath);
+                    continue;
+                }
+
+                Directory.CreateDirectory(Path.GetDirectoryName(destinationPath) ?? destinationDirectory);
+                using (var source = entry.Open())
+                using (var destination = new FileStream(destinationPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                {
+                    await source.CopyToAsync(destination, 81920, ct).ConfigureAwait(false);
+                }
+            }
+        }
     }
 
     private static async Task ExtractWithSevenZipAsync(string            sevenZipPath,

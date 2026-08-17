@@ -43,12 +43,14 @@ public static class NtfsCompressor
                                                       out uint       lpBytesReturned,
                                                       IntPtr         lpOverlapped);
 
-    public static void CompressDirectoryRecursive(string rootPath)
+    public static void CompressDirectoryRecursive(string rootPath, CancellationToken ct)
     {
+        ct.ThrowIfCancellationRequested();
         CompressDirectory(rootPath);
 
         foreach (string entry in Directory.EnumerateFileSystemEntries(rootPath, "*", SearchOption.AllDirectories))
         {
+            ct.ThrowIfCancellationRequested();
             if ((File.GetAttributes(entry) & FileAttributes.Directory) != 0)
             {
                 CompressDirectory(entry);
