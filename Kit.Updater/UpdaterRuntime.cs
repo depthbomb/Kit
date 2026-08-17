@@ -29,7 +29,10 @@ internal sealed class AvailableUpdate
                            bool                                        isUpdaterUpdate               = false,
                            string?                                     applicationPackageDownloadUrl = null,
                            string?                                     applicationPackageSha256      = null,
-                           IReadOnlyList<ReleasePackageFileReference>? applicationPackageFiles       = null)
+                           IReadOnlyList<ReleasePackageFileReference>? applicationPackageFiles       = null,
+                           IReadOnlyList<AvailableDeltaPackage>?       deltaPackages                  = null,
+                           string?                                     deltaBaseDirectory             = null,
+                           IReadOnlyList<string>?                      deltaDeletedFiles              = null)
     {
         Version                       = version;
         DownloadUrl                   = downloadUrl;
@@ -39,6 +42,9 @@ internal sealed class AvailableUpdate
         ApplicationPackageDownloadUrl = applicationPackageDownloadUrl      ?? string.Empty;
         ApplicationPackageSha256      = applicationPackageSha256           ?? string.Empty;
         ApplicationPackageFiles       = applicationPackageFiles?.ToArray() ?? [];
+        DeltaPackages                 = deltaPackages?.ToArray() ?? [];
+        DeltaBaseDirectory            = deltaBaseDirectory ?? string.Empty;
+        DeltaDeletedFiles             = deltaDeletedFiles?.ToArray() ?? [];
     }
 
     public ApplicationVersion Version { get; private set; }
@@ -59,6 +65,30 @@ internal sealed class AvailableUpdate
 
     /// <summary>The per-file integrity metadata for the app package ZIP.</summary>
     public IReadOnlyList<ReleasePackageFileReference> ApplicationPackageFiles { get; private set; }
+
+    public IReadOnlyList<AvailableDeltaPackage> DeltaPackages { get; private set; }
+
+    public string DeltaBaseDirectory { get; private set; }
+
+    public IReadOnlyList<string> DeltaDeletedFiles { get; private set; }
+
+    public bool IsDelta => !string.IsNullOrWhiteSpace(DeltaBaseDirectory);
+}
+
+internal sealed class AvailableDeltaPackage
+{
+    public AvailableDeltaPackage(ApplicationVersion fromVersion, string downloadUrl, string sha256, IReadOnlyList<string>? deletedFiles)
+    {
+        FromVersion = fromVersion;
+        DownloadUrl = downloadUrl;
+        Sha256 = sha256;
+        DeletedFiles = deletedFiles?.ToArray() ?? [];
+    }
+
+    public ApplicationVersion FromVersion { get; }
+    public string DownloadUrl { get; }
+    public string Sha256 { get; }
+    public IReadOnlyList<string> DeletedFiles { get; }
 }
 
 internal sealed class UpdateCheckResult
@@ -189,12 +219,30 @@ internal sealed class UpdaterRuntime
                     availableUpdate.DisplayVersion,
                     availableUpdate.ApplicationPackageSha256,
                     isUpdaterUpdate: false,
-                    applicationPackageFiles: availableUpdate.ApplicationPackageFiles);
+                    applicationPackageFiles: availableUpdate.ApplicationPackageFiles,
+                    deltaPackages: availableUpdate.DeltaPackages);
             }
             else
             {
                 // No app package in the manifest - nothing left to do for this version.
                 return new UpdateCheckResult(false, currentInstallation, availableUpdate);
+            }
+        }
+
+        if (!availableUpdate.IsUpdaterUpdate && currentInstallation != null)
+        {
+            var delta = availableUpdate.DeltaPackages.FirstOrDefault(candidate =>
+                candidate.FromVersion.CompareTo(currentInstallation.Version) == 0);
+            if (delta != null)
+            {
+                availableUpdate = new AvailableUpdate(
+                    availableUpdate.Version,
+                    delta.DownloadUrl,
+                    availableUpdate.DisplayVersion,
+                    delta.Sha256,
+                    applicationPackageFiles: availableUpdate.ApplicationPackageFiles,
+                    deltaBaseDirectory: currentInstallation.DirectoryPath,
+                    deltaDeletedFiles: delta.DeletedFiles);
             }
         }
 
@@ -323,11 +371,18 @@ internal sealed class UpdaterRuntime
 
             Report(progress, InstallationPhase.ValidatingInstallation, update.Version.NormalizedValue);
 
-            _installationPreparer.VerifyPostExtractIntegrity(extractedDirectory, update.ApplicationPackageFiles, ct);
-
             Report(progress, InstallationPhase.PreparingFiles, update.Version.NormalizedValue);
 
-            _installationPreparer.PrepareExtractedFiles(extractedDirectory, preparedDirectory);
+            if (update.IsDelta)
+            {
+                DeltaInstallationBuilder.Build(update.DeltaBaseDirectory, extractedDirectory, preparedDirectory, update.DeltaDeletedFiles, ct);
+                _installationPreparer.VerifyPostExtractIntegrity(preparedDirectory, update.ApplicationPackageFiles, ct);
+            }
+            else
+            {
+                _installationPreparer.VerifyPostExtractIntegrity(extractedDirectory, update.ApplicationPackageFiles, ct);
+                _installationPreparer.PrepareExtractedFiles(extractedDirectory, preparedDirectory);
+            }
 
             Report(progress, InstallationPhase.ValidatingInstallation, update.Version.NormalizedValue);
 

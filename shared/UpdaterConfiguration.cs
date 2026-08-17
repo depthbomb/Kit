@@ -223,6 +223,8 @@ internal sealed class ReleaseManifest
     public ReleasePackageReference ApplicationPackage { get; set; } = new();
 
     public ReleasePackageReference UpdaterPackage { get; set; } = new();
+
+    public List<ReleaseDeltaPackageReference> DeltaPackages { get; set; } = [];
 }
 
 internal sealed class ReleaseDownloadInstruction
@@ -252,4 +254,15 @@ internal sealed class ReleasePackageFileReference
     public string Sha512 { get; set; } = string.Empty;
 
     public long Size { get; set; }
+}
+
+internal sealed class ReleaseDeltaPackageReference
+{
+    public string FromVersion { get; set; } = string.Empty;
+
+    public string FileName { get; set; } = string.Empty;
+
+    public string Sha256 { get; set; } = string.Empty;
+
+    public List<string> DeletedFiles { get; set; } = [];
 }

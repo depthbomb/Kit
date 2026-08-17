@@ -29,8 +29,8 @@ The CLI exposes four commands:
 ```text
 kit stamp --input <blank-bootstrapper.exe> --config <stamp-config.json> [--output <stamped-bootstrapper.exe>] [--version <release-version>]
 kit inspect --input <stamped-bootstrapper.exe>
-kit manifest --version <release-version> --updater <stamped-updater.exe> --package <app-package.zip> [--installer <updater-refresh-installer.exe>] [--output <output-directory>] [--updater-update-required <true|false>]
-kit release --app-dir <app-dir-path> --config <stamp-config.json> --updater <blank-updater.exe> [--version <release-version>] [--output-dir <output-dir-path>] [--package-name <app-package.zip>] [--updater-update-required <true|false>] [--installer-command <command>] [--installer-args <args>] [--installer-path <installer-path>]
+kit manifest --version <release-version> --updater <stamped-updater.exe> --package <app-package.zip> [--installer <updater-refresh-installer.exe>] [--output <output-directory>] [--updater-update-required <true|false>] [--delta-from-version <version> --delta-package <delta.zip> [--delta-delete-list <file>]]
+kit release --app-dir <app-dir-path> --config <stamp-config.json> --updater <blank-updater.exe> [--version <release-version>] [--output-dir <output-dir-path>] [--package-name <app-package.zip>] [--updater-update-required <true|false>] [--installer-command <command>] [--installer-args <args>] [--installer-path <installer-path>] [--delta-from-version <version> --delta-package <delta.zip> [--delta-delete-list <file>]]
 ```
 
 ## Updater Automation
@@ -88,6 +88,8 @@ Reads the stamped updater payload and prints the embedded configuration as forma
 ### `manifest`
 
 Builds `release-manifest.json` in the target output directory. The manifest always contains the application package. `--installer` is only required when `--updater-update-required true`.
+
+An optional delta ZIP can contain only files added or changed since `--delta-from-version`. Pass `--delta-delete-list` for a UTF-8 text file containing one relative path per line to remove (blank lines and lines beginning with `#` are ignored). The manifest always retains the full application package as a fallback. A client uses the delta only when its current version exactly matches the delta base version, then verifies the assembled installation against the full package file manifest.
 
 ```powershell
 .\kit.exe manifest `

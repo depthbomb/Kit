@@ -11,7 +11,10 @@ internal static class ReleaseManifestBuilder
                                         string updaterPath,
                                         string packagePath,
                                         string? installerPath,
-                                        bool updaterUpdateRequired)
+                                        bool updaterUpdateRequired,
+                                        string? deltaFromVersion = null,
+                                        string? deltaPackagePath = null,
+                                        string? deltaDeleteListPath = null)
     {
         if (!StampVersion.TryParse(version))
         {
@@ -49,6 +52,7 @@ internal static class ReleaseManifestBuilder
         }
 
         var selectedPackage = updaterUpdateRequired ? updaterPackage : applicationPackage;
+        var deltaPackages = BuildDeltaPackages(deltaFromVersion, deltaPackagePath, deltaDeleteListPath);
 
         return new ReleaseManifest
         {
@@ -63,8 +67,60 @@ internal static class ReleaseManifestBuilder
                 Sha256   = selectedPackage.Sha256
             },
             ApplicationPackage = applicationPackage,
-            UpdaterPackage     = updaterPackage
+            UpdaterPackage     = updaterPackage,
+            DeltaPackages      = deltaPackages
         };
+    }
+
+    private static List<ReleaseDeltaPackageReference> BuildDeltaPackages(string? fromVersion, string? packagePath, string? deleteListPath)
+    {
+        var hasVersion = !string.IsNullOrWhiteSpace(fromVersion);
+        var hasPackage = !string.IsNullOrWhiteSpace(packagePath);
+        if (hasVersion != hasPackage)
+        {
+            throw new InvalidOperationException("A delta package requires both --delta-from-version and --delta-package.");
+        }
+
+        if (!hasVersion)
+        {
+            if (!string.IsNullOrWhiteSpace(deleteListPath))
+            {
+                throw new InvalidOperationException("--delta-delete-list requires a delta package.");
+            }
+
+            return [];
+        }
+
+        if (!StampVersion.TryParse(fromVersion!) || !File.Exists(packagePath!))
+        {
+            throw new InvalidOperationException("The delta base version or package is invalid.");
+        }
+
+        var deletedFiles = string.IsNullOrWhiteSpace(deleteListPath)
+            ? []
+            : File.ReadAllLines(deleteListPath!)
+                  .Select(value => value.Trim())
+                  .Where(value => value.Length > 0 && !value.StartsWith("#", StringComparison.Ordinal))
+                  .ToList();
+
+        foreach (var path in deletedFiles)
+        {
+            if (Path.IsPathRooted(path) || path.Split('/', '\\').Any(segment => segment == ".."))
+            {
+                throw new InvalidOperationException("The delta deletion list contains an unsafe path: " + path);
+            }
+        }
+
+        return
+        [
+            new ReleaseDeltaPackageReference
+            {
+                FromVersion = fromVersion!.Trim(),
+                FileName = Path.GetFileName(packagePath),
+                Sha256 = ComputeSha256(packagePath!),
+                DeletedFiles = deletedFiles
+            }
+        ];
     }
 
     private static ReleasePackageReference BuildPackageReference(string path, string kind) => new()

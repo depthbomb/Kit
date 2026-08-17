@@ -162,13 +162,43 @@ internal static class ReleaseCommand
         }
 
         var updaterUpdateRequired = KitRcOptionResolver.GetOptionalBoolean(command, "updater-update-required", section => section.UpdaterUpdateRequired);
+        var deltaFromVersion = KitRcOptionResolver.GetOptionalValue(command, "delta-from-version", section => section.DeltaFromVersion, "");
+        var deltaPackage = KitRcOptionResolver.GetOptionalValue(command, "delta-package", section => section.DeltaPackage, "");
+        var deltaDeleteList = KitRcOptionResolver.GetOptionalValue(command, "delta-delete-list", section => section.DeltaDeleteList, "");
+        string? releaseDeltaPackagePath = null;
+        if (!string.IsNullOrWhiteSpace(deltaPackage.Value))
+        {
+            var sourceDeltaPath = deltaPackage.ResolvePath();
+            if (!File.Exists(sourceDeltaPath))
+            {
+                throw new FileNotFoundException("Delta package was not found.", sourceDeltaPath);
+            }
+
+            releaseDeltaPackagePath = Path.Combine(fullOutputDir, Path.GetFileName(sourceDeltaPath));
+            if (!string.Equals(sourceDeltaPath, releaseDeltaPackagePath, StringComparison.OrdinalIgnoreCase)
+                && (string.Equals(releaseDeltaPackagePath, zipPath, StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(releaseDeltaPackagePath, resolvedInstallerPath, StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new InvalidOperationException("The delta package filename conflicts with another release artifact.");
+            }
+
+            if (!string.Equals(sourceDeltaPath, releaseDeltaPackagePath, StringComparison.OrdinalIgnoreCase))
+            {
+                File.Copy(sourceDeltaPath, releaseDeltaPackagePath, true);
+            }
+        }
+
+        var fullDeltaDeleteListPath = string.IsNullOrWhiteSpace(deltaDeleteList.Value) ? null : deltaDeleteList.ResolvePath();
 
         var manifest = ReleaseManifestBuilder.Build(
             version,
             fullUpdaterPath,
             zipPath,
             resolvedInstallerPath,
-            updaterUpdateRequired);
+            updaterUpdateRequired,
+            deltaFromVersion.Value,
+            releaseDeltaPackagePath,
+            fullDeltaDeleteListPath);
 
         var manifestPath = Path.Combine(fullOutputDir, "release-manifest.json");
         File.WriteAllText(manifestPath, JsonSerializer.Serialize(manifest, new JsonSerializerOptions

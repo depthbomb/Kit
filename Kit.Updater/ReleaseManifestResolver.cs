@@ -56,6 +56,29 @@ internal static class ReleaseManifestResolver
             }
         }
 
+        var deltaPackages = new List<AvailableDeltaPackage>();
+        foreach (var delta in manifest.DeltaPackages ?? [])
+        {
+            if (!ApplicationVersion.TryParse(delta.FromVersion, out var fromVersion)
+                || fromVersion!.CompareTo(resolvedVersion) >= 0
+                || string.IsNullOrWhiteSpace(delta.FileName)
+                || string.IsNullOrWhiteSpace(delta.Sha256))
+            {
+                DiagnosticLog.Warning("delta.invalid_manifest_entry");
+                continue;
+            }
+
+            var deltaUrl = resolveFileUrl(delta.FileName);
+            if (string.IsNullOrWhiteSpace(deltaUrl))
+            {
+                DiagnosticLog.Warning("delta.unresolved_package",
+                    new KeyValuePair<string, string?>("fromVersion", fromVersion.NormalizedValue));
+                continue;
+            }
+
+            deltaPackages.Add(new AvailableDeltaPackage(fromVersion!, deltaUrl!, delta.Sha256, delta.DeletedFiles));
+        }
+
         return new AvailableUpdate(
             resolvedVersion,
             downloadUrl!,
@@ -64,6 +87,7 @@ internal static class ReleaseManifestResolver
             isUpdaterUpdate,
             appPackageUrl,
             appPackageSha256,
-            manifest.ApplicationPackage.Files);
+            manifest.ApplicationPackage?.Files,
+            deltaPackages);
     }
 }

@@ -40,6 +40,12 @@ internal sealed class KitRcCommandOptions
     public string? InstallerArgs { get; set; }
 
     public string? InstallerPath { get; set; }
+
+    public string? DeltaFromVersion { get; set; }
+
+    public string? DeltaPackage { get; set; }
+
+    public string? DeltaDeleteList { get; set; }
 }
 
 internal sealed class KitRcContext

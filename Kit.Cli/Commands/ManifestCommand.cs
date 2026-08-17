@@ -51,12 +51,21 @@ internal static class ManifestCommand
             throw new InvalidOperationException("--installer is required when --updater-update-required true.");
         }
 
+        var deltaFromVersion = KitRcOptionResolver.GetOptionalValue(command, "delta-from-version", section => section.DeltaFromVersion, "");
+        var deltaPackage = KitRcOptionResolver.GetOptionalValue(command, "delta-package", section => section.DeltaPackage, "");
+        var deltaDeleteList = KitRcOptionResolver.GetOptionalValue(command, "delta-delete-list", section => section.DeltaDeleteList, "");
+        var fullDeltaPackagePath = string.IsNullOrWhiteSpace(deltaPackage.Value) ? null : deltaPackage.ResolvePath();
+        var fullDeltaDeleteListPath = string.IsNullOrWhiteSpace(deltaDeleteList.Value) ? null : deltaDeleteList.ResolvePath();
+
         var manifest = ReleaseManifestBuilder.Build(
             releaseVersion.Value,
             fullUpdaterPath,
             fullPackagePath,
             fullInstallerPath,
-            updaterUpdateRequired);
+            updaterUpdateRequired,
+            deltaFromVersion.Value,
+            fullDeltaPackagePath,
+            fullDeltaDeleteListPath);
 
         Directory.CreateDirectory(Path.GetDirectoryName(outputPath) ?? Environment.CurrentDirectory);
 
