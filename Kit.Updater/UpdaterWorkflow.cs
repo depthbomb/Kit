@@ -50,6 +50,10 @@ internal sealed class UpdaterWorkflow
                                 ?? throw new InvalidOperationException("The updater configuration is invalid.");
 
             UpdaterConfigurationValidator.Validate(configuration);
+            DiagnosticLog.Initialize(configuration.ApplicationName);
+            DiagnosticLog.Info("configuration.loaded",
+                new KeyValuePair<string, string?>("application", configuration.ApplicationName),
+                new KeyValuePair<string, string?>("initialVersion", configuration.InitialVersion));
             view.ApplyConfiguration(configuration);
             view.SetStatus(UiTextKey.LoadingConfigurationStatus, "Loading updater configuration...", true);
 
@@ -63,6 +67,8 @@ internal sealed class UpdaterWorkflow
 
                 if (!AppRuntimeChecker.IsWindowsAppRuntimeInstalled(requiredVersion))
                 {
+                    DiagnosticLog.Info("prerequisite.windows_app_runtime_missing",
+                        new KeyValuePair<string, string?>("requiredVersion", requiredVersion.ToString()));
                     if (!view.ConfirmAppRuntimeInstallation())
                     {
                         view.CloseWindow();
@@ -80,6 +86,7 @@ internal sealed class UpdaterWorkflow
 
                 if (!WebView2RuntimeChecker.IsWebView2RuntimeInstalled())
                 {
+                    DiagnosticLog.Info("prerequisite.webview2_missing");
                     if (!view.ConfirmWebView2RuntimeInstallation())
                     {
                         view.CloseWindow();
@@ -118,6 +125,10 @@ internal sealed class UpdaterWorkflow
 
             view.SetStatus(UiTextKey.CheckingForUpdatesStatus, "Checking for updates...", true);
             var updateResult = await runtime.CheckForUpdateAsync(currentInstallation, ct);
+            DiagnosticLog.Info("update.checked",
+                new KeyValuePair<string, string?>("currentVersion", currentInstallation?.Version.NormalizedValue),
+                new KeyValuePair<string, string?>("availableVersion", updateResult.AvailableUpdate?.Version.NormalizedValue),
+                new KeyValuePair<string, string?>("isAvailable", updateResult.IsUpdateAvailable.ToString()));
 
             EnsureUpdatePolicySatisfied(configuration.UpdatePolicy, currentInstallation, updateResult.AvailableUpdate);
 
@@ -183,21 +194,26 @@ internal sealed class UpdaterWorkflow
 
             view.SetStatus(UiTextKey.DownloadingVersionStatus, "Downloading version {Version}...", false, updateResult.AvailableUpdate.DisplayVersion);
             var installedUpdate = await runtime.DownloadAndInstallUpdateAsync(updateResult.AvailableUpdate, progress, ct);
+            DiagnosticLog.Info("update.installed",
+                new KeyValuePair<string, string?>("version", installedUpdate.Version.NormalizedValue));
 
             view.SetStatus(UiTextKey.LaunchingUpdatedVersionStatus, "Launching version {Version}...", true, installedUpdate.Version.NormalizedValue);
             await LaunchAsync(view, runtime, installedUpdate, ct);
         }
         catch (OperationCanceledException)
         {
+            DiagnosticLog.Info("updater.cancelled");
             view.CloseWindow();
         }
         catch (SelfUpdateRestartRequiredException)
         {
+            DiagnosticLog.Info("self_update.started");
             view.CloseWindow();
         }
         catch (Exception exception)
         {
-            view.ShowError(exception.Message, "Updater Error");
+            DiagnosticLog.Error("updater.failed", exception);
+            view.ShowError(exception.Message + Environment.NewLine + Environment.NewLine + "Diagnostic log: " + DiagnosticLog.FilePath, "Updater Error");
             view.CloseWindow();
         }
     }

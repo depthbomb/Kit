@@ -32,6 +32,10 @@ internal static class Program
     [STAThread]
     private static void Main()
     {
+        DiagnosticLog.Initialize("updater");
+        DiagnosticLog.Info("updater.start",
+            new KeyValuePair<string, string?>("version", typeof(Program).Assembly.GetName().Version?.ToString()));
+
         string  mutexName   = "Global\\KitUpdater-Unstamped";
         string? windowTitle = null;
 
@@ -46,6 +50,7 @@ internal static class Program
                 var appName = configuration.ApplicationName;
                 if (!string.IsNullOrWhiteSpace(appName))
                 {
+                    DiagnosticLog.Initialize(appName);
                     mutexName = "Global\\KitUpdater-" + appName.Replace("\\", "_");
 
                     var resolver = new UiTextResolver();
@@ -62,6 +67,7 @@ internal static class Program
         {
             if (!createdNew)
             {
+                DiagnosticLog.Info("updater.duplicate_instance");
                 RestoreAndFocusExistingInstance(windowTitle);
                 return;
             }

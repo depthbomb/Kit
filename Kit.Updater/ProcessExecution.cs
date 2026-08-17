@@ -32,6 +32,9 @@ internal static class ProcessExecution
                 throw new InvalidOperationException("Failed to start process: " + startInfo.FileName);
             }
 
+            DiagnosticLog.Info("process.started",
+                new KeyValuePair<string, string?>("file", Path.GetFileName(startInfo.FileName)));
+
             var outputTask = startInfo.RedirectStandardOutput ? process.StandardOutput.ReadToEndAsync() : Task.FromResult(string.Empty);
             var errorTask  = startInfo.RedirectStandardError ? process.StandardError.ReadToEndAsync() : Task.FromResult(string.Empty);
 
@@ -56,6 +59,9 @@ internal static class ProcessExecution
             var output = await outputTask.ConfigureAwait(false);
             var error  = await errorTask.ConfigureAwait(false);
 
+            DiagnosticLog.Info("process.exited",
+                new KeyValuePair<string, string?>("file", Path.GetFileName(startInfo.FileName)),
+                new KeyValuePair<string, string?>("exitCode", process.ExitCode.ToString()));
             return new ProcessExecutionResult(process.ExitCode, output, error);
         }
     }
