@@ -1,5 +1,6 @@
 using Shared;
 using System.Diagnostics;
+using System.Text;
 
 namespace Kit.Updater;
 
@@ -102,8 +103,39 @@ internal sealed class ApplicationLauncher
             return "\"\"";
         }
 
-        return argument.IndexOfAny([' ', '\t', '"']) >= 0
-            ? "\"" + argument.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\""
-            : argument;
+        if (argument.IndexOfAny([' ', '\t', '"']) < 0)
+        {
+            return argument;
+        }
+
+        var builder          = new StringBuilder(argument.Length + 2);
+        var backslashCount   = 0;
+        builder.Append('"');
+
+        foreach (var character in argument)
+        {
+            if (character == '\\')
+            {
+                backslashCount++;
+                continue;
+            }
+
+            if (character == '"')
+            {
+                builder.Append('\\', backslashCount * 2 + 1);
+                builder.Append('"');
+            }
+            else
+            {
+                builder.Append('\\', backslashCount);
+                builder.Append(character);
+            }
+
+            backslashCount = 0;
+        }
+
+        builder.Append('\\', backslashCount * 2);
+        builder.Append('"');
+        return builder.ToString();
     }
 }
