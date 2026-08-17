@@ -186,13 +186,24 @@ internal static class StampVersion
 
         if (prereleaseSplit.Length == 2)
         {
-            var prereleaseSegments = prereleaseSplit[1].Split('.');
-            if (prereleaseSegments.Any(segment => segment.Length == 0))
+            if (!AreValidLabelSegments(prereleaseSplit[1]))
             {
                 return false;
             }
         }
 
+        if (buildSplit.Length == 2 && !AreValidLabelSegments(buildSplit[1]))
+        {
+            return false;
+        }
+
         return true;
     }
+
+    private static bool AreValidLabelSegments(string value)
+        => value.Split('.').All(segment => segment.Length > 0
+                                           && segment.All(character => character is >= 'a' and <= 'z'
+                                                                       or >= 'A' and <= 'Z'
+                                                                       or >= '0' and <= '9'
+                                                                       or '-'));
 }

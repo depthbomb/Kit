@@ -51,6 +51,11 @@ internal static class ReleaseCommand
             Console.WriteLine($"Auto-detected version: {version}");
         }
 
+        if (!StampVersion.TryParse(version))
+        {
+            throw new InvalidOperationException("The resolved application version is not a valid version string: " + version);
+        }
+
         // Validate stamp configuration before building payload
         StampPayloadValidator.Validate(stampConfiguration, configDirectory);
 

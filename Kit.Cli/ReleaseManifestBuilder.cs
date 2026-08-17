@@ -13,6 +13,11 @@ internal static class ReleaseManifestBuilder
                                         string? installerPath,
                                         bool updaterUpdateRequired)
     {
+        if (!StampVersion.TryParse(version))
+        {
+            throw new InvalidOperationException("The release version is not a valid version string.");
+        }
+
         var payloadJson = StampPayload.ReadConfigurationJson(updaterPath);
         var payload = JsonSerializer.Deserialize<UpdaterConfiguration>(payloadJson, new JsonSerializerOptions
                       {

@@ -7,6 +7,11 @@ internal static class ManifestCommand
     public static int Run(RootCommand command)
     {
         var releaseVersion = KitRcOptionResolver.GetRequiredValue(command, "version", section => section.Version);
+        if (!StampVersion.TryParse(releaseVersion.Value))
+        {
+            throw new InvalidOperationException("--version must be a valid version string.");
+        }
+
         var updaterPath    = KitRcOptionResolver.GetRequiredPath(command, "updater", section => section.Updater);
         var packagePath    = KitRcOptionResolver.GetRequiredPath(command, "package", section => section.Package);
         var fullUpdaterPath = updaterPath.ResolvePath();
