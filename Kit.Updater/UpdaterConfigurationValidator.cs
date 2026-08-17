@@ -36,6 +36,11 @@ internal static class UpdaterConfigurationValidator
             throw new InvalidOperationException("The stamped configuration contains an invalid requiredAppRuntimeVersion value.");
         }
 
+        if (!UpdateChannel.IsValid(configuration.UpdateSource.Channel))
+        {
+            throw new InvalidOperationException("The stamped configuration contains an invalid updateSource.channel value.");
+        }
+
         if (!RuntimeArchitectureResolver.IsSupported(configuration.RequiredAppRuntimeArchitecture))
         {
             throw new InvalidOperationException("The stamped configuration contains an invalid requiredAppRuntimeArchitecture value.");

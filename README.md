@@ -41,9 +41,13 @@ The stamped updater supports noninteractive automation:
 updater.exe --check
 updater.exe --update [--no-launch]
 updater.exe --silent [--no-launch]
+updater.exe --update --channel preview [--no-launch]
+updater.exe --update --offline-manifest .\release-manifest.json [--no-launch]
+updater.exe --repair --offline-manifest .\release-manifest.json [--no-launch]
 ```
 
 `--check` returns `10` when an update is available and `0` otherwise. `--update` installs optional updates without prompting. `--silent` implies `--update` and suppresses console output.
+`--channel` overrides the stamped update channel for the current run. `--offline-manifest` installs from a manifest and package files in the same local directory without contacting an update source. `--repair` transactionally reinstalls the current version from its manifest, restoring the original installation if repair fails.
 
 Stable exit codes:
 
@@ -197,7 +201,8 @@ Example:
   "updateSource": {
     "type": "github",
     "repository": "owner/repo",
-    "includePrerelease": false
+    "includePrerelease": false,
+    "channel": "stable"
   }
 }
 ```
@@ -253,10 +258,14 @@ For `github`, configure:
 
 - `repository`: `owner/repo`
 - `includePrerelease`: optional
+- `channel`: optional release channel; defaults to `stable`. Non-stable channels also search prerelease releases.
 
 For `json`, configure:
 
-- `url`: absolute manifest URL
+- `url`: absolute manifest URL; `{channel}` is replaced with the selected channel
+- `channel`: optional release channel; defaults to `stable`
+
+Generated release manifests carry the channel from the stamped configuration. The updater rejects manifests for a different application or channel.
 
 ## Release Manifest
 

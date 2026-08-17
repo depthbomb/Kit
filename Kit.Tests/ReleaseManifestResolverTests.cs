@@ -23,6 +23,21 @@ public sealed class ReleaseManifestResolverTests
         };
 
         Assert.ThrowsException<InvalidOperationException>(() =>
-            ReleaseManifestResolver.ResolveAvailableUpdate(manifest, "Expected App", _ => "https://example.test/app.zip"));
+            ReleaseManifestResolver.ResolveAvailableUpdate(manifest, "Expected App", "stable", _ => "https://example.test/app.zip"));
+    }
+
+    [TestMethod]
+    public void ResolveAvailableUpdateRejectsAnotherChannel()
+    {
+        var manifest = new ReleaseManifest
+        {
+            ApplicationName = "Expected App",
+            Version = "1.2.3",
+            Channel = "preview",
+            Download = new ReleaseDownloadInstruction { Kind = "application", FileName = "app.zip", Sha256 = "00" }
+        };
+
+        Assert.ThrowsException<InvalidOperationException>(() =>
+            ReleaseManifestResolver.ResolveAvailableUpdate(manifest, "Expected App", "stable", _ => "https://example.test/app.zip"));
     }
 }

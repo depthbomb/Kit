@@ -40,6 +40,12 @@ internal sealed class UpdateDownloader
                                                 IProgress<InstallationProgress>? progress,
                                                 CancellationToken                ct)
     {
+        if (TryResolveLocalFile(url, out var localPath))
+        {
+            await CopyLocalFileAsync(localPath!, targetPath, version, progress, ct).ConfigureAwait(false);
+            return;
+        }
+
         DiagnosticLog.Info("download.started",
             new KeyValuePair<string, string?>("host", Uri.TryCreate(url, UriKind.Absolute, out var uri) ? uri.Host : null),
             new KeyValuePair<string, string?>("version", version));
@@ -93,6 +99,56 @@ internal sealed class UpdateDownloader
         DiagnosticLog.Info("download.completed",
             new KeyValuePair<string, string?>("version", version),
             new KeyValuePair<string, string?>("bytes", new FileInfo(targetPath).Length.ToString()));
+    }
+
+    private static bool TryResolveLocalFile(string value, out string? localPath)
+    {
+        if (Uri.TryCreate(value, UriKind.Absolute, out var uri) && uri.IsFile)
+        {
+            localPath = uri.LocalPath;
+            return true;
+        }
+
+        if (Path.IsPathRooted(value) && File.Exists(value))
+        {
+            localPath = value;
+            return true;
+        }
+
+        localPath = null;
+        return false;
+    }
+
+    private static async Task CopyLocalFileAsync(string                           sourcePath,
+                                                 string                           targetPath,
+                                                 string                           version,
+                                                 IProgress<InstallationProgress>? progress,
+                                                 CancellationToken                ct)
+    {
+        var fullSourcePath = Path.GetFullPath(sourcePath);
+        var fullTargetPath = Path.GetFullPath(targetPath);
+        if (string.Equals(fullSourcePath, fullTargetPath, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("The offline package cannot also be the updater download cache file.");
+        }
+
+        Directory.CreateDirectory(Path.GetDirectoryName(fullTargetPath) ?? Path.GetTempPath());
+        DeleteDownloadFiles(fullTargetPath);
+        var length = new FileInfo(fullSourcePath).Length;
+        using (var source = new FileStream(fullSourcePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+        {
+            await DownloadTransfer.CopyToFileAsync(
+                source,
+                fullTargetPath,
+                length,
+                ct,
+                (totalRead, total) => progress?.Report(new InstallationProgress(InstallationPhase.Downloading, version, totalRead, total)))
+                .ConfigureAwait(false);
+        }
+
+        DiagnosticLog.Info("download.local_completed",
+            new KeyValuePair<string, string?>("version", version),
+            new KeyValuePair<string, string?>("bytes", length.ToString()));
     }
 
     public static void DeleteDownloadFiles(string targetPath)

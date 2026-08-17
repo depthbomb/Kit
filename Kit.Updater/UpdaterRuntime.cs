@@ -160,6 +160,12 @@ internal sealed class UpdaterRuntime
                                                              CancellationToken             ct)
     {
         var availableUpdate = await _updateSource.GetAvailableUpdateAsync(ct).ConfigureAwait(false);
+        return CheckForProvidedUpdate(currentInstallation, availableUpdate);
+    }
+
+    public UpdateCheckResult CheckForProvidedUpdate(LocalApplicationInstallation? currentInstallation,
+                                                    AvailableUpdate?              availableUpdate)
+    {
         if (availableUpdate == null)
         {
             return new UpdateCheckResult(false, currentInstallation, null);
@@ -209,6 +215,40 @@ internal sealed class UpdaterRuntime
 
         var localMatch = _installationState.FindInstalledVersion(availableUpdate.Version);
         return new UpdateCheckResult(true, localMatch ?? currentInstallation, availableUpdate, localMatch != null);
+    }
+
+    public async Task<LocalApplicationInstallation> RepairInstallationAsync(LocalApplicationInstallation currentInstallation,
+                                                                            AvailableUpdate              update,
+                                                                            IProgress<InstallationProgress>? progress,
+                                                                            CancellationToken             ct)
+    {
+        if (update.IsUpdaterUpdate || currentInstallation.Version.CompareTo(update.Version) != 0)
+        {
+            throw new InvalidOperationException("Repair requires an application package for the currently installed version.");
+        }
+
+        var originalDirectory = currentInstallation.DirectoryPath;
+        var backupDirectory = Path.Combine(_baseDirectory, ".kit-repair-backup-" + Guid.NewGuid().ToString("N"));
+        Directory.Move(originalDirectory, backupDirectory);
+        _installationState.MarkInstalledVersionsDirty();
+
+        try
+        {
+            var repaired = await DownloadAndInstallUpdateAsync(update, progress, ct).ConfigureAwait(false);
+            TryDeleteDirectory(backupDirectory);
+            return repaired;
+        }
+        catch
+        {
+            TryDeleteDirectory(originalDirectory);
+            if (Directory.Exists(backupDirectory))
+            {
+                Directory.Move(backupDirectory, originalDirectory);
+            }
+
+            _installationState.MarkInstalledVersionsDirty();
+            throw;
+        }
     }
 
     private bool CanSkipUpdate(LocalApplicationInstallation? currentInstallation)

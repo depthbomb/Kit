@@ -6,12 +6,18 @@ internal static class ReleaseManifestResolver
 {
     public static AvailableUpdate ResolveAvailableUpdate(ReleaseManifest      manifest,
                                                          string               expectedApplicationName,
+                                                         string               expectedChannel,
                                                          Func<string, string?> resolveFileUrl)
     {
         if (string.IsNullOrWhiteSpace(manifest.ApplicationName)
             || !string.Equals(manifest.ApplicationName.Trim(), expectedApplicationName.Trim(), StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException("The release manifest application name does not match this updater.");
+        }
+
+        if (!UpdateChannel.Matches(expectedChannel, manifest.Channel))
+        {
+            throw new InvalidOperationException("The release manifest channel does not match this updater.");
         }
 
         if (!ApplicationVersion.TryParse(manifest.Version, out var version))

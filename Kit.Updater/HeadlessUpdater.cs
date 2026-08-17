@@ -17,7 +17,35 @@ internal sealed class HeadlessUpdater
 
         var runtime = new UpdaterRuntime(configuration, AppDomain.CurrentDomain.BaseDirectory);
         var currentInstallation = runtime.ResolveCurrentInstallation();
-        var updateResult = await runtime.CheckForUpdateAsync(currentInstallation, ct).ConfigureAwait(false);
+        var updateResult = string.IsNullOrWhiteSpace(options.OfflineManifestPath)
+            ? await runtime.CheckForUpdateAsync(currentInstallation, ct).ConfigureAwait(false)
+            : runtime.CheckForProvidedUpdate(
+                currentInstallation,
+                OfflineManifestLoader.Load(options.OfflineManifestPath!, configuration.ApplicationName, configuration.UpdateSource.Channel));
+
+        if (options.Repair)
+        {
+            if (currentInstallation == null || updateResult.AvailableUpdate == null)
+            {
+                throw new InvalidOperationException("Repair requires an installed application and a release manifest.");
+            }
+
+            if (runtime.IsApplicationRunning())
+            {
+                Write(options, "The application is currently running.");
+                return UpdaterExitCode.ApplicationRunning;
+            }
+
+            var repaired = await runtime.RepairInstallationAsync(currentInstallation, updateResult.AvailableUpdate, null, ct).ConfigureAwait(false);
+            if (!options.NoLaunch)
+            {
+                await runtime.LaunchAndVerifyAsync(repaired, null, ct).ConfigureAwait(false);
+            }
+
+            Write(options, "Installation repaired.");
+            return UpdaterExitCode.UpdateInstalled;
+        }
+
         var plan = UpdatePolicyEvaluator.CreatePlan(configuration.UpdatePolicy, currentInstallation, updateResult);
 
         if (options.Mode == UpdaterCommandMode.Check)

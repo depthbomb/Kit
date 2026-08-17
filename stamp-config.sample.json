@@ -87,6 +87,7 @@
   ],
   "updateSource": {
     "type": "github",
-    "repository": "owner/repo"
+    "repository": "owner/repo",
+    "channel": "stable"
   }
 }

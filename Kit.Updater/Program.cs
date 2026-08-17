@@ -60,6 +60,10 @@ internal static class Program
         {
             var executablePath = Assembly.GetExecutingAssembly().Location;
             configuration = UpdaterConfigurationLoader.Load(executablePath);
+            if (!string.IsNullOrWhiteSpace(options.Channel))
+            {
+                configuration.UpdateSource.Channel = options.Channel!;
+            }
             if (configuration != null)
             {
                 var appName = configuration.ApplicationName;

@@ -54,6 +54,7 @@ internal static class ReleaseManifestBuilder
         {
             ApplicationName       = payload.ApplicationName,
             Version               = version,
+            Channel               = string.IsNullOrWhiteSpace(payload.UpdateSource.Channel) ? "stable" : payload.UpdateSource.Channel.Trim(),
             UpdaterUpdateRequired = updaterUpdateRequired,
             Download = new ReleaseDownloadInstruction
             {

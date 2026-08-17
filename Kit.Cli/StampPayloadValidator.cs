@@ -107,6 +107,8 @@ internal static class StampPayloadValidator
             RequireValue(updateSource.Repository, "updateSource.repository");
         }
 
+        ValidateChannel(updateSource.Channel, "updateSource.channel");
+
         if (!string.IsNullOrWhiteSpace(configuration.RequiredAppRuntimeVersion) && !StampVersion.TryParse(configuration.RequiredAppRuntimeVersion))
         {
             throw new InvalidOperationException("requiredAppRuntimeVersion must be a valid version string.");
@@ -175,6 +177,20 @@ internal static class StampPayloadValidator
         if (string.IsNullOrWhiteSpace(value))
         {
             throw new InvalidOperationException(fieldName + " is required.");
+        }
+    }
+
+    private static void ValidateChannel(string? value, string fieldName)
+    {
+        var channel = string.IsNullOrWhiteSpace(value) ? "stable" : value!.Trim();
+        if (channel.Any(character => !(character is >= 'a' and <= 'z'
+                                       or >= 'A' and <= 'Z'
+                                       or >= '0' and <= '9'
+                                       or '-'
+                                       or '_'
+                                       or '.')))
+        {
+            throw new InvalidOperationException(fieldName + " may only contain letters, numbers, periods, underscores, and hyphens.");
         }
     }
 }

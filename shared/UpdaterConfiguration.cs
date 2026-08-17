@@ -53,6 +53,8 @@ internal sealed class UpdateSourceConfiguration
     public string Repository { get; set; } = string.Empty;
 
     public bool IncludePrerelease { get; set; }
+
+    public string Channel { get; set; } = "stable";
 }
 
 internal sealed class InstallationConfiguration
@@ -211,6 +213,8 @@ internal sealed class ReleaseManifest
     public string ApplicationName { get; set; } = string.Empty;
 
     public string Version { get; set; } = string.Empty;
+
+    public string Channel { get; set; } = "stable";
 
     public bool UpdaterUpdateRequired { get; set; }
 

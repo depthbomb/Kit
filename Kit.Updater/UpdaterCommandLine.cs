@@ -12,14 +12,19 @@ internal sealed class UpdaterCommandLineOptions
     public UpdaterCommandMode Mode { get; private set; }
     public bool NoLaunch { get; private set; }
     public bool Silent { get; private set; }
+    public bool Repair { get; private set; }
+    public string? Channel { get; private set; }
+    public string? OfflineManifestPath { get; private set; }
 
     public static bool TryParse(IEnumerable<string> arguments, out UpdaterCommandLineOptions options, out string? error)
     {
         options = new UpdaterCommandLineOptions();
         error = null;
 
-        foreach (var rawArgument in arguments)
+        var argumentList = arguments.ToList();
+        for (var index = 0; index < argumentList.Count; index++)
         {
+            var rawArgument = argumentList[index];
             var argument = rawArgument.Trim();
             switch (argument.ToLowerInvariant())
             {
@@ -40,6 +45,33 @@ internal sealed class UpdaterCommandLineOptions
                 case "--no-launch":
                     options.NoLaunch = true;
                     break;
+                case "--repair":
+                    options.Repair = true;
+                    if (options.Mode == UpdaterCommandMode.UserInterface)
+                    {
+                        options.Mode = UpdaterCommandMode.Update;
+                    }
+
+                    break;
+                case "--channel":
+                    if (!TryReadValue(argumentList, ref index, "--channel", out var channel, out error)) return false;
+                    if (!UpdateChannel.IsValid(channel))
+                    {
+                        error = "--channel contains invalid characters.";
+                        return false;
+                    }
+
+                    options.Channel = UpdateChannel.Normalize(channel);
+                    break;
+                case "--offline-manifest":
+                    if (!TryReadValue(argumentList, ref index, "--offline-manifest", out var manifestPath, out error)) return false;
+                    options.OfflineManifestPath = manifestPath;
+                    if (options.Mode == UpdaterCommandMode.UserInterface)
+                    {
+                        options.Mode = UpdaterCommandMode.Update;
+                    }
+
+                    break;
                 default:
                     error = "Unknown updater option: " + rawArgument;
                     return false;
@@ -52,6 +84,30 @@ internal sealed class UpdaterCommandLineOptions
             return false;
         }
 
+        if (options.Mode == UpdaterCommandMode.Check && options.Repair)
+        {
+            error = "--repair cannot be combined with --check.";
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool TryReadValue(IReadOnlyList<string> arguments,
+                                     ref int                   index,
+                                     string                    option,
+                                     out string                value,
+                                     out string?               error)
+    {
+        if (index + 1 >= arguments.Count || arguments[index + 1].StartsWith("--", StringComparison.Ordinal))
+        {
+            value = string.Empty;
+            error = "Missing value for " + option + ".";
+            return false;
+        }
+
+        value = arguments[++index].Trim();
+        error = null;
         return true;
     }
 

@@ -41,7 +41,8 @@ internal sealed class JsonUpdateSource : IUpdateSource
             throw new InvalidOperationException("The JSON update source URL is not configured.");
         }
 
-        var json       = await UpdateSourceHttp.GetStringAsync(_configuration.Url, ct).ConfigureAwait(false);
+        var configuredUrl = _configuration.Url.Replace("{channel}", Uri.EscapeDataString(UpdateChannel.Normalize(_configuration.Channel)));
+        var json       = await UpdateSourceHttp.GetStringAsync(configuredUrl, ct).ConfigureAwait(false);
         var serializer = new JavaScriptSerializer();
         var manifest   = serializer.Deserialize<ReleaseManifest>(json);
         if (manifest == null)
@@ -49,8 +50,8 @@ internal sealed class JsonUpdateSource : IUpdateSource
             throw new InvalidOperationException("The JSON update source returned an invalid or empty manifest.");
         }
 
-        var baseUri = new Uri(_configuration.Url);
-        return ReleaseManifestResolver.ResolveAvailableUpdate(manifest, _applicationName, fileName =>
+        var baseUri = new Uri(configuredUrl);
+        return ReleaseManifestResolver.ResolveAvailableUpdate(manifest, _applicationName, _configuration.Channel, fileName =>
         {
             if (Uri.IsWellFormedUriString(fileName, UriKind.Absolute))
             {
@@ -83,7 +84,7 @@ internal sealed class GitHubUpdateSource : IUpdateSource
         var repository = _configuration.Repository.Trim();
         var serializer = new JavaScriptSerializer();
 
-        if (!_configuration.IncludePrerelease)
+        if (!ShouldIncludePrereleases())
         {
             try
             {
@@ -122,15 +123,17 @@ internal sealed class GitHubUpdateSource : IUpdateSource
 
             foreach (var releaseObject in releases.OfType<Dictionary<string, object>>())
             {
-                if (IsSkippedRelease(releaseObject, _configuration.IncludePrerelease))
+                if (IsSkippedRelease(releaseObject, ShouldIncludePrereleases()))
                 {
                     continue;
                 }
 
                 var update = await TryResolveReleaseAsync(releaseObject, serializer, ct).ConfigureAwait(false);
 
-                return update
-                       ?? throw new InvalidOperationException("The newest eligible GitHub release could not be resolved into an update.");
+                if (update != null)
+                {
+                    return update;
+                }
             }
         }
     }
@@ -146,7 +149,7 @@ internal sealed class GitHubUpdateSource : IUpdateSource
     private async Task<AvailableUpdate?> TryResolveReleaseAsync(Dictionary<string, object> releaseObject, JavaScriptSerializer serializer, CancellationToken ct)
     {
         var isPrerelease = UpdateSourceParsing.ReadBoolean(releaseObject, "prerelease");
-        if (isPrerelease && !_configuration.IncludePrerelease)
+        if (isPrerelease && !ShouldIncludePrereleases())
         {
             return null;
         }
@@ -178,7 +181,7 @@ internal sealed class GitHubUpdateSource : IUpdateSource
 
         try
         {
-            return ReleaseManifestResolver.ResolveAvailableUpdate(manifest, _applicationName, fileName =>
+            return ReleaseManifestResolver.ResolveAvailableUpdate(manifest, _applicationName, _configuration.Channel, fileName =>
             {
                 var targetAsset = assetList.FirstOrDefault(a => string.Equals(UpdateSourceParsing.ReadString(a, "name"), fileName, StringComparison.OrdinalIgnoreCase));
                 return targetAsset == null ? null : UpdateSourceParsing.ReadString(targetAsset, "browser_download_url");
@@ -195,6 +198,9 @@ internal sealed class GitHubUpdateSource : IUpdateSource
 
     private static string BuildReleasesEndpoint(string repository, int page)
         => $"https://api.github.com/repos/{repository}/releases?per_page=100&page={page}";
+
+    private bool ShouldIncludePrereleases()
+        => _configuration.IncludePrerelease || !UpdateChannel.Matches("stable", _configuration.Channel);
 }
 
 internal static class UpdateSourceHttp
