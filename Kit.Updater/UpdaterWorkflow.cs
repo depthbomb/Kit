@@ -145,7 +145,7 @@ internal sealed class UpdaterWorkflow
                     return;
                 case UpdatePlanKind.LaunchInstalledUpdate:
                     view.SetStatus(UiTextKey.UpdateAlreadyDownloadedStatus, "Version {Version} is already downloaded. Launching it now...", true, plan.Update!.DisplayVersion);
-                    await LaunchAsync(view, runtime, plan.Installation, ct);
+                    await LaunchUpdatedAsync(view, runtime, plan.Installation!, currentInstallation, ct);
                     return;
                 case UpdatePlanKind.InstallUpdaterUpdate:
                     view.SetStatus(UiTextKey.DownloadingVersionStatus, "Downloading updater update {Version}...", false, plan.Update!.DisplayVersion);
@@ -188,7 +188,7 @@ internal sealed class UpdaterWorkflow
                 new KeyValuePair<string, string?>("version", installedUpdate.Version.NormalizedValue));
 
             view.SetStatus(UiTextKey.LaunchingUpdatedVersionStatus, "Launching version {Version}...", true, installedUpdate.Version.NormalizedValue);
-            await LaunchAsync(view, runtime, installedUpdate, ct);
+            await LaunchUpdatedAsync(view, runtime, installedUpdate, currentInstallation, ct);
         }
         catch (OperationCanceledException)
         {
@@ -246,6 +246,28 @@ internal sealed class UpdaterWorkflow
 
         await Task.Delay(500, ct);
         runtime.Launch(installation);
+        view.CloseWindow();
+    }
+
+    private static async Task LaunchUpdatedAsync(IUpdaterView                  view,
+                                                 UpdaterRuntime                runtime,
+                                                 LocalApplicationInstallation installation,
+                                                 LocalApplicationInstallation? previousInstallation,
+                                                 CancellationToken             ct)
+    {
+        if (await runtime.LaunchAndVerifyAsync(installation, previousInstallation, ct))
+        {
+            view.CloseWindow();
+            return;
+        }
+
+        if (previousInstallation == null)
+        {
+            throw new InvalidOperationException("The newly installed application exited during its launch health check and no previous version is available.");
+        }
+
+        view.SetStatus(UiTextKey.LaunchingCurrentVersionStatus, "The updated application failed its launch health check. Restoring the previous version...", true);
+        runtime.Launch(previousInstallation);
         view.CloseWindow();
     }
 

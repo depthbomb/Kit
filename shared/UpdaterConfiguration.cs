@@ -70,6 +70,8 @@ internal sealed class InstallationConfiguration
     public bool AllowFreshInstall { get; set; }
 
     public bool CompressFiles { get; set; } = true;
+
+    public int LaunchHealthTimeoutSeconds { get; set; }
 }
 
 internal sealed class UpdatePolicyConfiguration

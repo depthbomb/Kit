@@ -69,7 +69,8 @@
     "postInstallCommand": "postinstall.cmd",
     "postInstallArguments": "\"{AppDirectory}\" {Version}",
     "allowFreshInstall": true,
-    "compressFiles": true
+    "compressFiles": true,
+    "launchHealthTimeoutSeconds": 10
   },
   "updatePolicy": {
     "mode": "optional",

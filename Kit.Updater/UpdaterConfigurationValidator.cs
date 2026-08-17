@@ -36,6 +36,11 @@ internal static class UpdaterConfigurationValidator
             throw new InvalidOperationException("The stamped configuration contains an invalid requiredAppRuntimeVersion value.");
         }
 
+        if (configuration.Installation == null || configuration.Installation.LaunchHealthTimeoutSeconds < 0)
+        {
+            throw new InvalidOperationException("The stamped configuration contains an invalid installation.launchHealthTimeoutSeconds value.");
+        }
+
         var updatePolicyMode = configuration.UpdatePolicy.Mode.Trim();
         if (updatePolicyMode.Length == 0)
         {

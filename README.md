@@ -192,6 +192,10 @@ When omitted, `compressFiles` defaults to `true`.
 
 Compression is applied when the updater installs files from a downloaded package, including fresh installs and normal update installs.
 
+### `installation.launchHealthTimeoutSeconds`
+
+When greater than zero, activation of a newly installed version is transactional. The updater waits this many seconds after launch; if the process exits during that window, it restores and launches the previous version. An interrupted pending activation is rolled back the next time the updater starts. Set to `0` to disable launch health checks.
+
 ### `requiredAppRuntimeVersion`
 
 When set, the updater checks for a Windows App Runtime version greater than or equal to the configured version. If it is missing, the user is prompted before the updater downloads and installs the matching Microsoft bootstrapper.

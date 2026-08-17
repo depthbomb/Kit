@@ -54,6 +54,11 @@ internal static class StampPayloadValidator
             throw new InvalidOperationException("installation.keepLastVersions must be zero or greater.");
         }
 
+        if (installation.LaunchHealthTimeoutSeconds < 0)
+        {
+            throw new InvalidOperationException("installation.launchHealthTimeoutSeconds must be zero or greater.");
+        }
+
         var extractionLayout = installation.ExtractionLayout.Trim();
         if (!SupportedExtractionLayouts.Contains(extractionLayout))
         {

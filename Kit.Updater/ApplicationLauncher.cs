@@ -64,6 +64,58 @@ internal sealed class ApplicationLauncher
         Process.Start(startInfo);
     }
 
+    public async Task<bool> LaunchAndVerifyAsync(LocalApplicationInstallation  installation,
+                                                 LocalApplicationInstallation? previousInstallation,
+                                                 CancellationToken              ct)
+    {
+        var timeoutSeconds = _configuration.Installation.LaunchHealthTimeoutSeconds;
+        if (timeoutSeconds <= 0)
+        {
+            Launch(installation);
+            return true;
+        }
+
+        if (!File.Exists(installation.ExecutablePath))
+        {
+            throw new FileNotFoundException("The configured application executable was not found.", installation.ExecutablePath);
+        }
+
+        var previousVersion = previousInstallation?.Version.NormalizedValue;
+        _installationState.BeginActivation(installation.Version.NormalizedValue, previousVersion);
+
+        try
+        {
+            using (var process = Process.Start(new ProcessStartInfo
+                   {
+                       FileName         = installation.ExecutablePath,
+                       WorkingDirectory = installation.DirectoryPath,
+                       UseShellExecute  = true,
+                       Arguments        = BuildLaunchArguments()
+                   }) ?? throw new InvalidOperationException("Failed to launch the updated application."))
+            {
+                await Task.Delay(TimeSpan.FromSeconds(timeoutSeconds), ct).ConfigureAwait(false);
+                if (process.HasExited)
+                {
+                    _installationState.RollbackActivation(previousVersion);
+                    DiagnosticLog.Warning("activation.health_check_failed",
+                        new KeyValuePair<string, string?>("version", installation.Version.NormalizedValue),
+                        new KeyValuePair<string, string?>("exitCode", process.ExitCode.ToString()));
+                    return false;
+                }
+            }
+
+            _installationState.CommitActivation();
+            DiagnosticLog.Info("activation.health_check_passed",
+                new KeyValuePair<string, string?>("version", installation.Version.NormalizedValue));
+            return true;
+        }
+        catch
+        {
+            _installationState.RollbackActivation(previousVersion);
+            throw;
+        }
+    }
+
     public void LaunchUpdaterInstaller(string installerPath)
     {
         var startInfo = new ProcessStartInfo

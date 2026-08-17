@@ -7,12 +7,14 @@ internal sealed class InstallationStateStore
     private const string CurrentVersionFileName        = ".kit-current-version";
     private const string LastDownloadedVersionFileName = ".kit-last-downloaded-version";
     private const string SkippedVersionFileName        = ".kit-skipped-version";
+    private const string PendingActivationFileName     = ".kit-pending-activation";
 
     private readonly UpdaterConfiguration _configuration;
     private readonly string               _baseDirectory;
     private readonly string               _currentVersionFilePath;
     private readonly string               _lastDownloadedVersionFilePath;
     private readonly string               _skippedVersionFilePath;
+    private readonly string               _pendingActivationFilePath;
 
     private List<LocalApplicationInstallation>? _installedVersionsCache;
     private bool                                _installedVersionsDirty = true;
@@ -24,10 +26,12 @@ internal sealed class InstallationStateStore
         _currentVersionFilePath        = Path.Combine(_baseDirectory, CurrentVersionFileName);
         _lastDownloadedVersionFilePath = Path.Combine(_baseDirectory, LastDownloadedVersionFileName);
         _skippedVersionFilePath        = Path.Combine(_baseDirectory, SkippedVersionFileName);
+        _pendingActivationFilePath     = Path.Combine(_baseDirectory, PendingActivationFileName);
     }
 
     public LocalApplicationInstallation? ResolveCurrentInstallation()
     {
+        RollbackInterruptedActivation();
         var installations = GetInstalledVersions();
         if (installations.Count == 0)
         {
@@ -66,12 +70,6 @@ internal sealed class InstallationStateStore
         File.WriteAllText(_skippedVersionFilePath, version);
     }
 
-    public void PersistVersionMarkers(string version)
-    {
-        PersistCurrentVersion(version);
-        File.WriteAllText(_lastDownloadedVersionFilePath, version);
-    }
-
     public void PersistCurrentVersion(string version)
     {
         File.WriteAllText(_currentVersionFilePath, version);
@@ -93,6 +91,36 @@ internal sealed class InstallationStateStore
         var directory       = ResolveVersionDirectory(resolvedVersion);
 
         return new LocalApplicationInstallation(resolvedVersion, directory, Path.Combine(directory, _configuration.LaunchExecutable));
+    }
+
+    public void PersistDownloadedVersion(string version)
+    {
+        File.WriteAllText(_lastDownloadedVersionFilePath, version);
+    }
+
+    public void BeginActivation(string version, string? previousVersion)
+    {
+        File.WriteAllLines(_pendingActivationFilePath, new[] { version, previousVersion ?? string.Empty });
+        PersistCurrentVersion(version);
+    }
+
+    public void CommitActivation()
+    {
+        TryDeleteFile(_pendingActivationFilePath);
+    }
+
+    public void RollbackActivation(string? previousVersion)
+    {
+        if (string.IsNullOrWhiteSpace(previousVersion))
+        {
+            TryDeleteFile(_currentVersionFilePath);
+        }
+        else
+        {
+            PersistCurrentVersion(previousVersion!);
+        }
+
+        TryDeleteFile(_pendingActivationFilePath);
     }
 
     public string ResolveVersionDirectory(ApplicationVersion version)
@@ -195,6 +223,27 @@ internal sealed class InstallationStateStore
 
     private ApplicationVersion? ReadConfiguredInitialVersion()
         => ApplicationVersion.TryParse(_configuration.InitialVersion, out var version) ? version : null;
+
+    private void RollbackInterruptedActivation()
+    {
+        if (!File.Exists(_pendingActivationFilePath))
+        {
+            return;
+        }
+
+        try
+        {
+            var lines = File.ReadAllLines(_pendingActivationFilePath);
+            var previousVersion = lines.Length > 1 ? lines[1].Trim() : string.Empty;
+            RollbackActivation(previousVersion);
+            DiagnosticLog.Warning("activation.interrupted_rollback",
+                new KeyValuePair<string, string?>("previousVersion", previousVersion));
+        }
+        catch (Exception exception)
+        {
+            DiagnosticLog.Error("activation.rollback_failed", exception);
+        }
+    }
 
     private static void TryDeleteFile(string path)
     {

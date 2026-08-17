@@ -240,7 +240,7 @@ internal sealed class UpdaterRuntime
         var existingInstallation = _installationState.FindInstalledVersion(update.Version);
         if (existingInstallation != null)
         {
-            _installationState.PersistVersionMarkers(existingInstallation.Version.NormalizedValue);
+            _installationState.PersistDownloadedVersion(existingInstallation.Version.NormalizedValue);
             _installationState.ClearSkippedVersion();
             return existingInstallation;
         }
@@ -300,7 +300,7 @@ internal sealed class UpdaterRuntime
             Directory.Move(preparedDirectory, targetDirectory);
 
             _installationState.MarkInstalledVersionsDirty();
-            _installationState.PersistVersionMarkers(update.Version.NormalizedValue);
+            _installationState.PersistDownloadedVersion(update.Version.NormalizedValue);
             _installationState.ClearSkippedVersion();
             _installationState.CleanupOldVersions(targetDirectory);
 
@@ -344,6 +344,11 @@ internal sealed class UpdaterRuntime
     public string GetApplicationProcessName() => _applicationLauncher.GetApplicationProcessName();
 
     public void Launch(LocalApplicationInstallation installation) => _applicationLauncher.Launch(installation);
+
+    public Task<bool> LaunchAndVerifyAsync(LocalApplicationInstallation  installation,
+                                           LocalApplicationInstallation? previousInstallation,
+                                           CancellationToken              ct)
+        => _applicationLauncher.LaunchAndVerifyAsync(installation, previousInstallation, ct);
 
     private static void Report(IProgress<InstallationProgress>? progress, InstallationPhase phase, string version)
     {
