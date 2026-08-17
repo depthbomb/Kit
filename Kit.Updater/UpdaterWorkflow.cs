@@ -130,70 +130,60 @@ internal sealed class UpdaterWorkflow
                 new KeyValuePair<string, string?>("availableVersion", updateResult.AvailableUpdate?.Version.NormalizedValue),
                 new KeyValuePair<string, string?>("isAvailable", updateResult.IsUpdateAvailable.ToString()));
 
-            EnsureUpdatePolicySatisfied(configuration.UpdatePolicy, currentInstallation, updateResult.AvailableUpdate);
+            var plan = UpdatePolicyEvaluator.CreatePlan(configuration.UpdatePolicy, currentInstallation, updateResult);
+            DiagnosticLog.Info("update.plan_created",
+                new KeyValuePair<string, string?>("kind", plan.Kind.ToString()));
 
-            if (!updateResult.IsUpdateAvailable || updateResult.AvailableUpdate == null)
+            switch (plan.Kind)
             {
-                if (currentInstallation == null)
-                {
-                    throw new InvalidOperationException("No local installation was found and no update is available to perform a fresh install.");
-                }
+                case UpdatePlanKind.LaunchCurrent:
+                    view.SetStatus(
+                        plan.WasSkipped ? UiTextKey.LaunchingCurrentVersionStatus : UiTextKey.NoUpdatesLaunchingStatus,
+                        plan.WasSkipped ? "Launching the current version..." : "No updates found. Launching {ApplicationName}...",
+                        true);
+                    await LaunchAsync(view, runtime, plan.Installation, ct);
+                    return;
+                case UpdatePlanKind.LaunchInstalledUpdate:
+                    view.SetStatus(UiTextKey.UpdateAlreadyDownloadedStatus, "Version {Version} is already downloaded. Launching it now...", true, plan.Update!.DisplayVersion);
+                    await LaunchAsync(view, runtime, plan.Installation, ct);
+                    return;
+                case UpdatePlanKind.InstallUpdaterUpdate:
+                    view.SetStatus(UiTextKey.DownloadingVersionStatus, "Downloading updater update {Version}...", false, plan.Update!.DisplayVersion);
+                    await runtime.DownloadAndInstallUpdateAsync(plan.Update, progress, ct);
+                    return;
+                case UpdatePlanKind.PromptForApplicationUpdate:
+                    switch (view.PromptForUpdate(plan.Update!, true, true))
+                    {
+                        case UpdatePromptChoice.Cancel:
+                            view.CloseWindow();
+                            return;
+                        case UpdatePromptChoice.SkipForSession:
+                            view.SetStatus(UiTextKey.LaunchingCurrentVersionStatus, "Launching current version...", true);
+                            await LaunchAsync(view, runtime, plan.Installation, ct);
+                            return;
+                        case UpdatePromptChoice.SkipVersion:
+                            runtime.SkipVersion(plan.Update!.Version.NormalizedValue);
+                            view.SetStatus(UiTextKey.LaunchingCurrentVersionStatus, "Launching current version...", true);
+                            await LaunchAsync(view, runtime, plan.Installation, ct);
+                            return;
+                    }
 
-                if (updateResult.WasSkipped)
-                {
-                    view.SetStatus(UiTextKey.LaunchingCurrentVersionStatus, "Launching the current version...", true);
-                }
-                else
-                {
-                    view.SetStatus(UiTextKey.NoUpdatesLaunchingStatus, "No updates found. Launching {ApplicationName}...", true);
-                }
-
-                await LaunchAsync(view, runtime, currentInstallation, ct);
-                return;
+                    break;
+                case UpdatePlanKind.InstallApplicationUpdate:
+                    break;
+                default:
+                    throw new InvalidOperationException("Unsupported update plan: " + plan.Kind);
             }
 
-            if (updateResult.AlreadyInstalled)
-            {
-                view.SetStatus(UiTextKey.UpdateAlreadyDownloadedStatus, "Version {Version} is already downloaded. Launching it now...", true, updateResult.AvailableUpdate.DisplayVersion);
-                await LaunchAsync(view, runtime, updateResult.LaunchInstallation, ct);
-                return;
-            }
-
-            if (updateResult.AvailableUpdate.IsUpdaterUpdate)
-            {
-                view.SetStatus(UiTextKey.DownloadingVersionStatus, "Downloading updater update {Version}...", false, updateResult.AvailableUpdate.DisplayVersion);
-                await runtime.DownloadAndInstallUpdateAsync(updateResult.AvailableUpdate, progress, ct);
-                return;
-            }
-
-            if (currentInstallation != null)
-            {
-                var requireImmediateInstall = IsUpdateRequired(configuration.UpdatePolicy, currentInstallation);
-                switch (view.PromptForUpdate(updateResult.AvailableUpdate, !requireImmediateInstall, !requireImmediateInstall))
-                {
-                    case UpdatePromptChoice.Cancel:
-                        view.CloseWindow();
-                        return;
-                    case UpdatePromptChoice.SkipForSession:
-                        view.SetStatus(UiTextKey.LaunchingCurrentVersionStatus, "Launching current version...", true);
-                        await LaunchAsync(view, runtime, currentInstallation, ct);
-                        return;
-                    case UpdatePromptChoice.SkipVersion:
-                        runtime.SkipVersion(updateResult.AvailableUpdate.Version.NormalizedValue);
-                        view.SetStatus(UiTextKey.LaunchingCurrentVersionStatus, "Launching current version...", true);
-                        await LaunchAsync(view, runtime, currentInstallation, ct);
-                        return;
-                }
-            }
-
-            if (!await EnsureApplicationNotRunningForInstallAsync(view, runtime, updateResult.AvailableUpdate.DisplayVersion, ct))
+            var plannedUpdate = plan.Update ?? throw new InvalidOperationException("The update plan does not contain an update.");
+            if (!await EnsureApplicationNotRunningForInstallAsync(view, runtime, plannedUpdate.DisplayVersion, ct))
             {
                 view.CloseWindow();
                 return;
             }
 
-            view.SetStatus(UiTextKey.DownloadingVersionStatus, "Downloading version {Version}...", false, updateResult.AvailableUpdate.DisplayVersion);
-            var installedUpdate = await runtime.DownloadAndInstallUpdateAsync(updateResult.AvailableUpdate, progress, ct);
+            view.SetStatus(UiTextKey.DownloadingVersionStatus, "Downloading version {Version}...", false, plannedUpdate.DisplayVersion);
+            var installedUpdate = await runtime.DownloadAndInstallUpdateAsync(plannedUpdate, progress, ct);
             DiagnosticLog.Info("update.installed",
                 new KeyValuePair<string, string?>("version", installedUpdate.Version.NormalizedValue));
 
@@ -259,65 +249,4 @@ internal sealed class UpdaterWorkflow
         view.CloseWindow();
     }
 
-    private static bool IsUpdateRequired(UpdatePolicyConfiguration policy, LocalApplicationInstallation? currentInstallation)
-    {
-        var mode = policy.Mode.Trim();
-        if (mode.Length == 0 || string.Equals(mode, "optional", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        if (string.Equals(mode, "required", StringComparison.OrdinalIgnoreCase))
-        {
-            return true;
-        }
-
-        if (!string.Equals(mode, "minimum-version-required", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        if (currentInstallation == null || !ApplicationVersion.TryParse(policy.MinimumVersion, out var minimumVersion))
-        {
-            return true;
-        }
-
-        return currentInstallation.Version.CompareTo(minimumVersion) < 0;
-    }
-
-    private static void EnsureUpdatePolicySatisfied(UpdatePolicyConfiguration     policy,
-                                                    LocalApplicationInstallation? currentInstallation,
-                                                    AvailableUpdate?              availableUpdate)
-    {
-        var mode = policy.Mode.Trim();
-        if (!string.Equals(mode, "minimum-version-required", StringComparison.OrdinalIgnoreCase))
-        {
-            return;
-        }
-
-        if (currentInstallation == null)
-        {
-            return;
-        }
-
-        if (!ApplicationVersion.TryParse(policy.MinimumVersion, out var minimumVersion))
-        {
-            throw new InvalidOperationException("updatePolicy.minimumVersion must be a valid version when updatePolicy.mode is minimum-version-required.");
-        }
-
-        if (currentInstallation.Version.CompareTo(minimumVersion) >= 0)
-        {
-            return;
-        }
-
-        if (availableUpdate == null)
-        {
-            throw new InvalidOperationException("The installed application version is below the required minimum version and no update is available.");
-        }
-
-        if (availableUpdate.Version.CompareTo(minimumVersion) < 0)
-        {
-            throw new InvalidOperationException("The available update does not satisfy the configured minimum required version.");
-        }
-    }
 }
