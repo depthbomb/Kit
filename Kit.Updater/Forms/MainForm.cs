@@ -377,8 +377,11 @@ internal sealed partial class MainForm : Form, IUpdaterView
         {
             var bytes = Convert.FromBase64String(bannerImageBase64);
             using (var memoryStream = new MemoryStream(bytes))
+            using (var sourceImage = Image.FromStream(memoryStream))
             {
-                c_BannerImage.Image = Image.FromStream(memoryStream);
+                var previousImage = c_BannerImage.Image;
+                c_BannerImage.Image = new Bitmap(sourceImage);
+                previousImage?.Dispose();
             }
         }
         catch
