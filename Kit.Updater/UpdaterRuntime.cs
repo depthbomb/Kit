@@ -196,7 +196,7 @@ internal sealed class UpdaterRuntime
         }
 
         // Do not honor a skipped-version marker for updater updates - they must always proceed.
-        if (!availableUpdate.IsUpdaterUpdate)
+        if (!availableUpdate.IsUpdaterUpdate && CanSkipUpdate(currentInstallation))
         {
             var skippedVersion = _installationState.ReadSkippedVersion();
             if (skippedVersion != null && skippedVersion.CompareTo(availableUpdate.Version) == 0)
@@ -207,6 +207,24 @@ internal sealed class UpdaterRuntime
 
         var localMatch = _installationState.FindInstalledVersion(availableUpdate.Version);
         return new UpdateCheckResult(true, localMatch ?? currentInstallation, availableUpdate, localMatch != null);
+    }
+
+    private bool CanSkipUpdate(LocalApplicationInstallation? currentInstallation)
+    {
+        var mode = _configuration.UpdatePolicy.Mode.Trim();
+        if (mode.Length == 0 || string.Equals(mode, "optional", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (!string.Equals(mode, "minimum-version-required", StringComparison.OrdinalIgnoreCase)
+            || currentInstallation == null
+            || !ApplicationVersion.TryParse(_configuration.UpdatePolicy.MinimumVersion, out var minimumVersion))
+        {
+            return false;
+        }
+
+        return currentInstallation.Version.CompareTo(minimumVersion) >= 0;
     }
 
     public async Task<LocalApplicationInstallation> DownloadAndInstallUpdateAsync(AvailableUpdate                  update,
