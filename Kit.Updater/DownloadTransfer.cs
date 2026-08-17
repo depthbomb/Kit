@@ -6,12 +6,14 @@ internal static class DownloadTransfer
                                              string               targetPath,
                                              long?                contentLength,
                                              CancellationToken    ct,
-                                             Action<long, long?>? onProgress = null)
+                                             Action<long, long?>? onProgress  = null,
+                                             bool                  append      = false,
+                                             long                  initialBytes = 0)
     {
-        using (var fileStream = new FileStream(targetPath, FileMode.Create, FileAccess.Write, FileShare.None))
+        using (var fileStream = new FileStream(targetPath, append ? FileMode.Append : FileMode.Create, FileAccess.Write, FileShare.None))
         {
             var  buffer    = new byte[81920];
-            long totalRead = 0;
+            long totalRead = initialBytes;
             int  bytesRead;
             while ((bytesRead = await source.ReadAsync(buffer, 0, buffer.Length, ct).ConfigureAwait(false)) > 0)
             {

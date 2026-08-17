@@ -1,5 +1,6 @@
 using System.Net.Http;
 using System.Security.Cryptography;
+using System.Net;
 
 namespace Kit.Updater;
 
@@ -11,14 +12,69 @@ internal sealed class UpdateDownloader
                                         IProgress<InstallationProgress>? progress,
                                         CancellationToken                ct)
     {
+        const int maximumTransferAttempts = 3;
+        for (var attempt = 1; attempt <= maximumTransferAttempts; attempt++)
+        {
+            try
+            {
+                await DownloadFileAttemptAsync(url, targetPath, version, progress, ct).ConfigureAwait(false);
+                return;
+            }
+            catch (Exception exception) when (attempt < maximumTransferAttempts
+                                               && !ct.IsCancellationRequested
+                                               && (exception is IOException || exception is HttpRequestException))
+            {
+                DiagnosticLog.Warning("download.retry",
+                    new KeyValuePair<string, string?>("attempt", attempt.ToString()),
+                    new KeyValuePair<string, string?>("reason", exception.GetType().Name));
+                await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt - 1)), ct).ConfigureAwait(false);
+            }
+        }
+
+        throw new InvalidOperationException("The download retry loop completed unexpectedly.");
+    }
+
+    private async Task DownloadFileAttemptAsync(string                           url,
+                                                string                           targetPath,
+                                                string                           version,
+                                                IProgress<InstallationProgress>? progress,
+                                                CancellationToken                ct)
+    {
         DiagnosticLog.Info("download.started",
             new KeyValuePair<string, string?>("host", Uri.TryCreate(url, UriKind.Absolute, out var uri) ? uri.Host : null),
             new KeyValuePair<string, string?>("version", version));
-        using (var response = await UpdaterHttpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false))
+        Directory.CreateDirectory(Path.GetDirectoryName(targetPath) ?? Path.GetTempPath());
+
+        var etagPath        = targetPath + ".etag";
+        var existingLength  = File.Exists(targetPath) ? new FileInfo(targetPath).Length : 0;
+        var existingEtag    = File.Exists(etagPath) ? File.ReadAllText(etagPath).Trim() : null;
+        using (var response = await UpdaterHttpClient.GetAsync(
+                   url,
+                   HttpCompletionOption.ResponseHeadersRead,
+                   ct,
+                   existingLength > 0 ? existingLength : null,
+                   existingEtag).ConfigureAwait(false))
         {
+            if (response.StatusCode == HttpStatusCode.RequestedRangeNotSatisfiable)
+            {
+                DeleteDownloadFiles(targetPath);
+                throw new IOException("The server rejected the saved partial download range.");
+            }
+
             response.EnsureSuccessStatusCode();
 
-            var contentLength = response.Content.Headers.ContentLength;
+            var isPartial     = response.StatusCode == HttpStatusCode.PartialContent && existingLength > 0;
+            var initialBytes  = isPartial ? existingLength : 0;
+            var contentLength = response.Content.Headers.ContentRange?.Length
+                                ?? (response.Content.Headers.ContentLength.HasValue
+                                    ? response.Content.Headers.ContentLength.Value + initialBytes
+                                    : (long?)null);
+
+            var responseEtag = response.Headers.ETag?.ToString();
+            if (!string.IsNullOrWhiteSpace(responseEtag))
+            {
+                File.WriteAllText(etagPath, responseEtag);
+            }
 
             using (var responseStream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
             {
@@ -27,7 +83,9 @@ internal sealed class UpdateDownloader
                                           targetPath,
                                           contentLength,
                                           ct,
-                                          (totalRead, total) => progress?.Report(new InstallationProgress(InstallationPhase.Downloading, version, totalRead, total)))
+                                          (totalRead, total) => progress?.Report(new InstallationProgress(InstallationPhase.Downloading, version, totalRead, total)),
+                                          isPartial,
+                                          initialBytes)
                                       .ConfigureAwait(false);
             }
         }
@@ -35,6 +93,27 @@ internal sealed class UpdateDownloader
         DiagnosticLog.Info("download.completed",
             new KeyValuePair<string, string?>("version", version),
             new KeyValuePair<string, string?>("bytes", new FileInfo(targetPath).Length.ToString()));
+    }
+
+    public static void DeleteDownloadFiles(string targetPath)
+    {
+        TryDelete(targetPath);
+        TryDelete(targetPath + ".etag");
+    }
+
+    private static void TryDelete(string path)
+    {
+        try
+        {
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+        catch
+        {
+            // Best effort cleanup; If-Range prevents appending to a changed remote object.
+        }
     }
 
     public async Task VerifyIntegrityAsync(AvailableUpdate   update,

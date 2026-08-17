@@ -1,4 +1,6 @@
 using Shared;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Kit.Updater;
 
@@ -246,12 +248,13 @@ internal sealed class UpdaterRuntime
         }
 
         var archiveExtension   = ArchiveExtractor.GetArchiveExtension(update.DownloadUrl);
-        var tempArchivePath    = Path.Combine(Path.GetTempPath(), "kit-"      + Guid.NewGuid().ToString("N") + archiveExtension);
+        var tempArchivePath    = BuildDownloadCachePath(update.DownloadUrl, archiveExtension);
         var stagingRoot        = Path.Combine(_baseDirectory, ".kit-staging-" + Guid.NewGuid().ToString("N"));
         var extractedDirectory = Path.Combine(stagingRoot, "extracted");
         var preparedDirectory  = Path.Combine(stagingRoot, "prepared");
         var targetDirectory    = _installationState.ResolveVersionDirectory(update.Version);
 
+        var downloadVerified = false;
         try
         {
             Report(progress, InstallationPhase.Downloading, update.Version.NormalizedValue);
@@ -260,7 +263,16 @@ internal sealed class UpdaterRuntime
 
             Report(progress, InstallationPhase.VerifyingIntegrity, update.Version.NormalizedValue);
 
-            await _downloader.VerifyIntegrityAsync(update, tempArchivePath, _configuration.Installation.RequireIntegrityVerification, ct).ConfigureAwait(false);
+            try
+            {
+                await _downloader.VerifyIntegrityAsync(update, tempArchivePath, _configuration.Installation.RequireIntegrityVerification, ct).ConfigureAwait(false);
+                downloadVerified = true;
+            }
+            catch (InvalidOperationException)
+            {
+                UpdateDownloader.DeleteDownloadFiles(tempArchivePath);
+                throw;
+            }
 
             Directory.CreateDirectory(stagingRoot);
             Directory.CreateDirectory(extractedDirectory);
@@ -309,7 +321,10 @@ internal sealed class UpdaterRuntime
         finally
         {
             Report(progress, InstallationPhase.CleaningUp, update.Version.NormalizedValue);
-            TryDeleteFile(tempArchivePath);
+            if (downloadVerified)
+            {
+                UpdateDownloader.DeleteDownloadFiles(tempArchivePath);
+            }
             TryDeleteDirectory(stagingRoot);
         }
     }
@@ -353,6 +368,20 @@ internal sealed class UpdaterRuntime
     private static void Report(IProgress<InstallationProgress>? progress, InstallationPhase phase, string version)
     {
         progress?.Report(new InstallationProgress(phase, version, null, null));
+    }
+
+    private string BuildDownloadCachePath(string downloadUrl, string archiveExtension)
+    {
+        byte[] hash;
+        using (var algorithm = SHA256.Create())
+        {
+            hash = algorithm.ComputeHash(Encoding.UTF8.GetBytes(downloadUrl));
+        }
+
+        var fileName = BitConverter.ToString(hash).Replace("-", string.Empty).ToLowerInvariant()
+                       + archiveExtension
+                       + ".partial";
+        return Path.Combine(_baseDirectory, ".kit-downloads", fileName);
     }
 
     private static void TryDeleteFile(string path)
