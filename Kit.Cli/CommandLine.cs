@@ -75,7 +75,7 @@ internal static class CommandLine
     {
         var builder = new StringBuilder();
         builder.AppendLine("Usage:");
-        builder.AppendLine("\tkit stamp --input <blank-bootstrapper.exe> --config <stamp-config.json> [--output <stamped-bootstrapper.exe>]");
+        builder.AppendLine("\tkit stamp --input <blank-bootstrapper.exe> --config <stamp-config.json> [--output <stamped-bootstrapper.exe>] [--version <release-version>]");
         builder.AppendLine("\tkit inspect --input <stamped-bootstrapper.exe>");
         builder.AppendLine("\tkit manifest  --version <release version> --updater <stamped-updater.exe> --package <app-package.zip> [--installer <updater-refresh-installer.exe>] [--output <release-manifest.json>] [--updater-update-required <true|false>]");
         builder.AppendLine("\tkit release --app-dir <app-dir-path> --config <stamp-config.json> --updater <blank-updater.exe> [--version <release-version>] [--output-dir <output-dir-path>] [--package-name <app-package.zip>] [--updater-update-required <true|false>] [--installer-command <command>] [--installer-args <args>] [--installer-path <installer-path>]");

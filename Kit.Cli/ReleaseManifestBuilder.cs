@@ -22,6 +22,12 @@ internal static class ReleaseManifestBuilder
 
         var applicationPackage = BuildPackageReference(packagePath, "application");
 
+        if (updaterUpdateRequired && !VersionsMatch(payload.UpdaterVersion, version))
+        {
+            throw new InvalidOperationException(
+                "The updater must be stamped with --version matching the manifest version when an updater update is required.");
+        }
+
         ReleasePackageReference updaterPackage;
         if (string.IsNullOrEmpty(installerPath))
         {
@@ -64,6 +70,17 @@ internal static class ReleaseManifestBuilder
     };
 
     private static bool IsZipArchive(string path) => string.Equals(Path.GetExtension(path), ".zip", StringComparison.OrdinalIgnoreCase);
+
+    private static bool VersionsMatch(string? stampedVersion, string? manifestVersion)
+        => string.Equals(RemoveVersionPrefix(stampedVersion), RemoveVersionPrefix(manifestVersion), StringComparison.OrdinalIgnoreCase);
+
+    private static string RemoveVersionPrefix(string? value)
+    {
+        var trimmed = value?.Trim() ?? string.Empty;
+        return trimmed.StartsWith("v", StringComparison.OrdinalIgnoreCase) && trimmed.Length > 1 && char.IsDigit(trimmed[1])
+            ? trimmed.Substring(1)
+            : trimmed;
+    }
 
     private static List<ReleasePackageFileReference> BuildFileReferences(string zipPath)
     {

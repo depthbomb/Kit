@@ -28,7 +28,16 @@ internal static class StampCommand
         var stampConfiguration = StampConfigurationLoader.Load(fullConfigPath);
         StampPayloadValidator.Validate(stampConfiguration, configDirectory);
 
-        var buildResult = StampPayloadBuilder.Build(stampConfiguration, configDirectory);
+        var versionOption = KitRcOptionResolver.GetOptionalValue(command, "version", section => section.Version, string.Empty);
+        if (!string.IsNullOrWhiteSpace(versionOption.Value) && !StampVersion.TryParse(versionOption.Value))
+        {
+            throw new InvalidOperationException("--version must be a valid version string.");
+        }
+
+        var buildResult = StampPayloadBuilder.Build(
+            stampConfiguration,
+            configDirectory,
+            string.IsNullOrWhiteSpace(versionOption.Value) ? null : versionOption.Value);
         var payloadJson = JsonSerializer.Serialize(buildResult.Payload, new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase

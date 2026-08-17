@@ -27,7 +27,7 @@ It consists of:
 The CLI exposes four commands:
 
 ```text
-kit stamp --input <blank-bootstrapper.exe> --config <stamp-config.json> [--output <stamped-bootstrapper.exe>]
+kit stamp --input <blank-bootstrapper.exe> --config <stamp-config.json> [--output <stamped-bootstrapper.exe>] [--version <release-version>]
 kit inspect --input <stamped-bootstrapper.exe>
 kit manifest --version <release-version> --updater <stamped-updater.exe> --package <app-package.zip> [--installer <updater-refresh-installer.exe>] [--output <output-directory>] [--updater-update-required <true|false>]
 kit release --app-dir <app-dir-path> --config <stamp-config.json> --updater <blank-updater.exe> [--version <release-version>] [--output-dir <output-dir-path>] [--package-name <app-package.zip>] [--updater-update-required <true|false>] [--installer-command <command>] [--installer-args <args>] [--installer-path <installer-path>]
@@ -40,6 +40,7 @@ See `.kitrc.sample.yaml` for a ready-made example.
 ### `stamp`
 
 Writes the stamped updater executable. If `--output` is omitted, the input file is overwritten.
+When the updater will be shipped in an updater-refresh installer, pass `--version` with the same version used by `manifest`; the CLI rejects updater-refresh manifests whose updater was not stamped for that release.
 
 ```powershell
 .\kit.exe stamp `
