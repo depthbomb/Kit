@@ -16,8 +16,8 @@ internal static class UpdateSourceFactory
         var sourceType = configuration.UpdateSource.Type.Trim().ToLowerInvariant();
         return sourceType switch
         {
-            "json"   => new JsonUpdateSource(configuration.UpdateSource),
-            "github" => new GitHubUpdateSource(configuration.UpdateSource),
+            "json"   => new JsonUpdateSource(configuration.ApplicationName, configuration.UpdateSource),
+            "github" => new GitHubUpdateSource(configuration.ApplicationName, configuration.UpdateSource),
             _        => throw new InvalidOperationException("Unsupported update source type: " + configuration.UpdateSource.Type)
         };
     }
@@ -25,10 +25,12 @@ internal static class UpdateSourceFactory
 
 internal sealed class JsonUpdateSource : IUpdateSource
 {
+    private readonly string                    _applicationName;
     private readonly UpdateSourceConfiguration _configuration;
 
-    public JsonUpdateSource(UpdateSourceConfiguration configuration)
+    public JsonUpdateSource(string applicationName, UpdateSourceConfiguration configuration)
     {
+        _applicationName = applicationName;
         _configuration = configuration;
     }
 
@@ -48,7 +50,7 @@ internal sealed class JsonUpdateSource : IUpdateSource
         }
 
         var baseUri = new Uri(_configuration.Url);
-        return ReleaseManifestResolver.ResolveAvailableUpdate(manifest, fileName =>
+        return ReleaseManifestResolver.ResolveAvailableUpdate(manifest, _applicationName, fileName =>
         {
             if (Uri.IsWellFormedUriString(fileName, UriKind.Absolute))
             {
@@ -62,10 +64,12 @@ internal sealed class JsonUpdateSource : IUpdateSource
 
 internal sealed class GitHubUpdateSource : IUpdateSource
 {
+    private readonly string                    _applicationName;
     private readonly UpdateSourceConfiguration _configuration;
 
-    public GitHubUpdateSource(UpdateSourceConfiguration configuration)
+    public GitHubUpdateSource(string applicationName, UpdateSourceConfiguration configuration)
     {
+        _applicationName = applicationName;
         _configuration = configuration;
     }
 
@@ -174,7 +178,7 @@ internal sealed class GitHubUpdateSource : IUpdateSource
 
         try
         {
-            return ReleaseManifestResolver.ResolveAvailableUpdate(manifest, fileName =>
+            return ReleaseManifestResolver.ResolveAvailableUpdate(manifest, _applicationName, fileName =>
             {
                 var targetAsset = assetList.FirstOrDefault(a => string.Equals(UpdateSourceParsing.ReadString(a, "name"), fileName, StringComparison.OrdinalIgnoreCase));
                 return targetAsset == null ? null : UpdateSourceParsing.ReadString(targetAsset, "browser_download_url");

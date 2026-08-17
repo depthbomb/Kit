@@ -4,8 +4,16 @@ namespace Kit.Updater;
 
 internal static class ReleaseManifestResolver
 {
-    public static AvailableUpdate ResolveAvailableUpdate(ReleaseManifest manifest, Func<string, string?> resolveFileUrl)
+    public static AvailableUpdate ResolveAvailableUpdate(ReleaseManifest      manifest,
+                                                         string               expectedApplicationName,
+                                                         Func<string, string?> resolveFileUrl)
     {
+        if (string.IsNullOrWhiteSpace(manifest.ApplicationName)
+            || !string.Equals(manifest.ApplicationName.Trim(), expectedApplicationName.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("The release manifest application name does not match this updater.");
+        }
+
         if (!ApplicationVersion.TryParse(manifest.Version, out var version))
         {
             throw new InvalidOperationException("The release manifest did not provide a valid version.");
