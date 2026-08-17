@@ -45,7 +45,7 @@ internal sealed class UpdaterWorkflow
             var executablePath    = Assembly.GetExecutingAssembly().Location;
             var configurationJson = StampPayload.ReadConfigurationJson(executablePath);
 
-            var serializer = new System.Web.Script.Serialization.JavaScriptSerializer();
+            var serializer = new System.Web.Script.Serialization.JavaScriptSerializer { MaxJsonLength = int.MaxValue };
             var configuration = serializer.Deserialize<UpdaterConfiguration>(configurationJson)
                                 ?? throw new InvalidOperationException("The updater configuration is invalid.");
 

@@ -39,7 +39,7 @@ internal static class Program
         {
             var executablePath    = Assembly.GetExecutingAssembly().Location;
             var configurationJson = StampPayload.ReadConfigurationJson(executablePath);
-            var serializer        = new JavaScriptSerializer();
+            var serializer        = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
             var configuration     = serializer.Deserialize<UpdaterConfiguration>(configurationJson);
             if (configuration != null)
             {
