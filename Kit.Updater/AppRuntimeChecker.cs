@@ -120,7 +120,7 @@ internal static class AppRuntimeChecker
                         continue;
                     }
 
-                    if (version == requiredVersion)
+                    if (version >= requiredVersion)
                     {
                         return true;
                     }
