@@ -65,7 +65,7 @@ internal sealed class UpdaterWorkflow
 
                 view.SetStatus(UiTextKey.CheckingAppRuntimesStatus, "Checking Windows App Runtime...", true);
 
-                if (!AppRuntimeChecker.IsWindowsAppRuntimeInstalled(requiredVersion))
+                if (!AppRuntimeChecker.IsWindowsAppRuntimeInstalled(requiredVersion, configuration.RequiredAppRuntimeArchitecture))
                 {
                     DiagnosticLog.Info("prerequisite.windows_app_runtime_missing",
                         new KeyValuePair<string, string?>("requiredVersion", requiredVersion.ToString()));
@@ -76,7 +76,7 @@ internal sealed class UpdaterWorkflow
                     }
 
                     view.SetStatus(UiTextKey.InstallingAppRuntimeStatus, "Installing Windows App Runtime...", false);
-                    await AppRuntimeChecker.DownloadAndInstallAppRuntimeAsync(requiredVersion, progress, ct);
+                    await AppRuntimeChecker.DownloadAndInstallAppRuntimeAsync(requiredVersion, progress, ct, configuration.RequiredAppRuntimeArchitecture);
                 }
             }
 

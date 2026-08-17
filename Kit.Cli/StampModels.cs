@@ -18,6 +18,8 @@ internal sealed class StampInputConfiguration
 
     public string? RequiredAppRuntimeVersion { get; set; }
 
+    public string? RequiredAppRuntimeArchitecture { get; set; }
+
     public bool RequireWebView2Runtime { get; set; }
 
     public AppearanceConfiguration? Appearance { get; set; }

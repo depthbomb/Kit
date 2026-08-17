@@ -6,6 +6,7 @@
   "bannerImagePath": "assets/banner.png",
   "windowIconPath": "assets/app.ico",
   "requiredAppRuntimeVersion": "",
+  "requiredAppRuntimeArchitecture": "auto",
   "requireWebView2Runtime": false,
   "appearance": {
     "useDarkMode": true,
@@ -80,7 +81,8 @@
     {
       "name": "Microsoft.WindowsDesktop.App",
       "version": "6.0.0",
-      "type": "windowsdesktop-runtime"
+        "type": "windowsdesktop-runtime",
+        "architecture": "auto"
     }
   ],
   "updateSource": {

@@ -115,6 +115,7 @@ Current top-level fields:
 - `bannerImagePath` optional
 - `windowIconPath` optional, must point to an `.ico`
 - `requiredAppRuntimeVersion` optional
+- `requiredAppRuntimeArchitecture` optional: `auto`, `x86`, `x64`, or `arm64`
 - `requireWebView2Runtime` optional
 - `appearance` optional
 - `text` optional
@@ -134,6 +135,7 @@ Example:
   "bannerImagePath": "assets/banner.png",
   "windowIconPath": "assets/app.ico",
   "requiredAppRuntimeVersion": "",
+  "requiredAppRuntimeArchitecture": "auto",
   "requireWebView2Runtime": false,
   "appearance": {
     "useDarkMode": true,
@@ -165,7 +167,8 @@ Example:
     {
       "name": "Microsoft.WindowsDesktop.App",
       "version": "6.0.0",
-      "type": "windowsdesktop-runtime"
+      "type": "windowsdesktop-runtime",
+      "architecture": "auto"
     }
   ],
   "updateSource": {
@@ -199,6 +202,8 @@ When greater than zero, activation of a newly installed version is transactional
 ### `requiredAppRuntimeVersion`
 
 When set, the updater checks for a Windows App Runtime version greater than or equal to the configured version. If it is missing, the user is prompted before the updater downloads and installs the matching Microsoft bootstrapper.
+
+`requiredAppRuntimeArchitecture` selects the Windows App Runtime architecture. `auto` selects the native operating-system architecture. Each `requiredRuntimes` entry accepts the same `architecture` values and uses the corresponding .NET host and installer.
 
 ### `requireWebView2Runtime`
 

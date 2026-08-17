@@ -9,14 +9,16 @@ internal static class AppRuntimeChecker
     private const string PackagesPath = @"SOFTWARE\Classes\Local Settings\Software\Microsoft\Windows\" +
                                         @"CurrentVersion\AppModel\Repository\Packages";
 
-    internal static bool IsWindowsAppRuntimeInstalled(Version requiredVersion)
-        => IsVersionInstalled(NormaliseVersion(requiredVersion));
+    internal static bool IsWindowsAppRuntimeInstalled(Version requiredVersion, string architecture)
+        => IsVersionInstalled(NormaliseVersion(requiredVersion), RuntimeArchitectureResolver.Resolve(architecture));
 
     internal static async Task DownloadAndInstallAppRuntimeAsync(Version                         requiredVersion,
                                                                  IProgress<InstallationProgress> progress,
-                                                                 CancellationToken               ct)
+                                                                 CancellationToken               ct,
+                                                                 string                          architecture)
     {
-        var url          = GetDownloadUrl(requiredVersion);
+        var resolvedArchitecture = RuntimeArchitectureResolver.Resolve(architecture);
+        var url          = GetDownloadUrl(requiredVersion, resolvedArchitecture);
         var versionLabel = $"{requiredVersion.Major}.{requiredVersion.Minor}";
         var tempPath     = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():B}.exe");
 
@@ -89,7 +91,7 @@ internal static class AppRuntimeChecker
         }
     }
 
-    private static bool IsVersionInstalled(Version requiredVersion)
+    private static bool IsVersionInstalled(Version requiredVersion, string architecture)
     {
         foreach (var hive in new[] { Registry.LocalMachine, Registry.CurrentUser })
         {
@@ -110,6 +112,11 @@ internal static class AppRuntimeChecker
 
                     if (!name.StartsWith("Microsoft.WindowsAppRuntime.", StringComparison.OrdinalIgnoreCase) &&
                         !name.StartsWith("MicrosoftCorporationII.WinAppRuntime.Main.", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    if (!PackageMatchesArchitecture(name, architecture))
                     {
                         continue;
                     }
@@ -135,6 +142,9 @@ internal static class AppRuntimeChecker
     // with 0. This ensures equality comparisons work correctly regardless of how many components the caller specified
     // (e.g. "2.2.0" and "2.2.0.0" compare as equal).
     private static Version NormaliseVersion(Version v) => new(v.Major, v.Minor, Math.Max(v.Build, 0), Math.Max(v.Revision, 0));
+
+    internal static bool PackageMatchesArchitecture(string packageName, string architecture)
+        => packageName.IndexOf("_" + RuntimeArchitectureResolver.Resolve(architecture) + "__", StringComparison.OrdinalIgnoreCase) >= 0;
 
     private static Version? TryExtractVersion(string packageName)
     {
@@ -197,6 +207,6 @@ internal static class AppRuntimeChecker
         return null;
     }
 
-    private static string GetDownloadUrl(Version version)
-        => $"https://aka.ms/windowsappsdk/{version.Major}.{version.Minor}/{version}/windowsappruntimeinstall-x64.exe";
+    private static string GetDownloadUrl(Version version, string architecture)
+        => $"https://aka.ms/windowsappsdk/{version.Major}.{version.Minor}/{version}/windowsappruntimeinstall-{architecture}.exe";
 }

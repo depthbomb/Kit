@@ -6,7 +6,7 @@ namespace Kit.Updater;
 
 internal sealed class RuntimeManager
 {
-    private List<InstalledRuntime>? _installedRuntimesCache;
+    private readonly Dictionary<string, List<InstalledRuntime>> _installedRuntimesCache = new(StringComparer.OrdinalIgnoreCase);
 
     private readonly UpdaterConfiguration _configuration;
 
@@ -26,11 +26,12 @@ internal sealed class RuntimeManager
             return [];
         }
 
-        var installedRuntimes = await GetInstalledRuntimesAsync(ct).ConfigureAwait(false);
         var missingRuntimes   = new List<RequiredRuntimeConfiguration>();
 
         foreach (var required in _configuration.RequiredRuntimes)
         {
+            var architecture = RuntimeArchitectureResolver.Resolve(required.Architecture);
+            var installedRuntimes = await GetInstalledRuntimesAsync(architecture, ct).ConfigureAwait(false);
             if (!ApplicationVersion.TryParse(required.Version, out var requiredVersion))
             {
                 continue;
@@ -48,25 +49,25 @@ internal sealed class RuntimeManager
         return missingRuntimes;
     }
 
-    private async Task<List<InstalledRuntime>> GetInstalledRuntimesAsync(CancellationToken ct)
+    private async Task<List<InstalledRuntime>> GetInstalledRuntimesAsync(string architecture, CancellationToken ct)
     {
-        if (_installedRuntimesCache != null)
+        if (_installedRuntimesCache.TryGetValue(architecture, out var cachedRuntimes))
         {
-            return _installedRuntimesCache;
+            return cachedRuntimes;
         }
 
         await _installedRuntimesCacheGate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            if (_installedRuntimesCache != null)
+            if (_installedRuntimesCache.TryGetValue(architecture, out cachedRuntimes))
             {
-                return _installedRuntimesCache;
+                return cachedRuntimes;
             }
 
             var runtimes = new List<InstalledRuntime>();
             var startInfo = new ProcessStartInfo
             {
-                FileName               = "dotnet",
+                FileName               = ResolveDotNetHostPath(architecture),
                 Arguments              = "--list-runtimes",
                 UseShellExecute        = false,
                 CreateNoWindow         = true,
@@ -98,16 +99,15 @@ internal sealed class RuntimeManager
                 }
             }
 
-            _installedRuntimesCache = runtimes;
+            _installedRuntimesCache[architecture] = runtimes;
 
             return runtimes;
         }
         catch
         {
             // If dotnet is not installed or command fails, assume none are installed.
-            _installedRuntimesCache = [];
-
-            return _installedRuntimesCache;
+            _installedRuntimesCache[architecture] = [];
+            return _installedRuntimesCache[architecture];
         }
         finally
         {
@@ -144,7 +144,7 @@ internal sealed class RuntimeManager
                 throw new InvalidOperationException($"Runtime installer failed with exit code {result.ExitCode}.");
             }
 
-            _installedRuntimesCache = null;
+            _installedRuntimesCache.Remove(RuntimeArchitectureResolver.Resolve(runtime.Architecture));
         }
         finally
         {
@@ -197,7 +197,26 @@ internal sealed class RuntimeManager
             ? $"{version.NumericSegments[0]}.{version.NumericSegments[1]}"
             : $"{version.NumericSegments[0]}.0";
 
-        return $"https://aka.ms/dotnet/{majorMinor}/{runtime.Type}-win-x64.exe";
+        var architecture = RuntimeArchitectureResolver.Resolve(runtime.Architecture);
+        return $"https://aka.ms/dotnet/{majorMinor}/{runtime.Type}-win-{architecture}.exe";
+    }
+
+    private static string ResolveDotNetHostPath(string architecture)
+    {
+        string? programFiles;
+        if (string.Equals(architecture, "x86", StringComparison.OrdinalIgnoreCase))
+        {
+            programFiles = Environment.GetEnvironmentVariable("ProgramFiles(x86)");
+        }
+        else
+        {
+            programFiles = Environment.GetEnvironmentVariable("ProgramW6432")
+                           ?? Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+        }
+
+        return string.IsNullOrWhiteSpace(programFiles)
+            ? "dotnet"
+            : Path.Combine(programFiles!, "dotnet", "dotnet.exe");
     }
 
     private sealed class InstalledRuntime

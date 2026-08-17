@@ -34,6 +34,15 @@ internal static class StampPayloadValidator
         "minimum-version-required"
     };
 
+    private static readonly HashSet<string> SupportedArchitectures = new(StringComparer.OrdinalIgnoreCase)
+    {
+        string.Empty,
+        "auto",
+        "x86",
+        "x64",
+        "arm64"
+    };
+
     public static void Validate(StampInputConfiguration configuration, string configDirectory)
     {
         RequireValue(configuration.ApplicationName, "applicationName");
@@ -103,6 +112,11 @@ internal static class StampPayloadValidator
             throw new InvalidOperationException("requiredAppRuntimeVersion must be a valid version string.");
         }
 
+        if (!SupportedArchitectures.Contains(configuration.RequiredAppRuntimeArchitecture?.Trim() ?? string.Empty))
+        {
+            throw new InvalidOperationException("requiredAppRuntimeArchitecture must be one of: auto, x86, x64, arm64.");
+        }
+
         if (configuration.RequiredRuntimes == null)
         {
             return;
@@ -122,6 +136,11 @@ internal static class StampPayloadValidator
             if (!SupportedRuntimeTypes.Contains(runtime.Type))
             {
                 throw new InvalidOperationException($"requiredRuntimes[].type '{runtime.Type}' is not supported.");
+            }
+
+            if (!SupportedArchitectures.Contains(runtime.Architecture?.Trim() ?? string.Empty))
+            {
+                throw new InvalidOperationException($"requiredRuntimes[].architecture '{runtime.Architecture}' is not supported.");
             }
         }
     }

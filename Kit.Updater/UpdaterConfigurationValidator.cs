@@ -36,6 +36,17 @@ internal static class UpdaterConfigurationValidator
             throw new InvalidOperationException("The stamped configuration contains an invalid requiredAppRuntimeVersion value.");
         }
 
+        if (!RuntimeArchitectureResolver.IsSupported(configuration.RequiredAppRuntimeArchitecture))
+        {
+            throw new InvalidOperationException("The stamped configuration contains an invalid requiredAppRuntimeArchitecture value.");
+        }
+
+        if (configuration.RequiredRuntimes != null
+            && configuration.RequiredRuntimes.Any(runtime => !RuntimeArchitectureResolver.IsSupported(runtime.Architecture)))
+        {
+            throw new InvalidOperationException("The stamped configuration contains an invalid required runtime architecture.");
+        }
+
         if (configuration.Installation == null || configuration.Installation.LaunchHealthTimeoutSeconds < 0)
         {
             throw new InvalidOperationException("The stamped configuration contains an invalid installation.launchHealthTimeoutSeconds value.");

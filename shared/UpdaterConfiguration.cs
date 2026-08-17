@@ -27,6 +27,8 @@ internal sealed class UpdaterConfiguration
 
     public string RequiredAppRuntimeVersion { get; set; } = string.Empty;
 
+    public string RequiredAppRuntimeArchitecture { get; set; } = "auto";
+
     public bool RequireWebView2Runtime { get; set; } = false;
 
     public AppearanceConfiguration Appearance { get; set; } = new();
@@ -200,6 +202,8 @@ internal sealed class RequiredRuntimeConfiguration
     public string Version { get; set; } = string.Empty;
 
     public string Type { get; set; } = string.Empty;
+
+    public string Architecture { get; set; } = "auto";
 }
 
 internal sealed class ReleaseManifest
