@@ -1,4 +1,5 @@
 <Solution>
   <Project Path="Kit.Cli/Kit.Cli.csproj" />
+  <Project Path="Kit.Tests/Kit.Tests.csproj" />
   <Project Path="Kit.Updater/Kit.Updater.csproj" />
 </Solution>

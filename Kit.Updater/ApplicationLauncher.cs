@@ -96,7 +96,7 @@ internal sealed class ApplicationLauncher
         return configuredArguments + " " + combined;
     }
 
-    private static string QuoteArgument(string argument)
+    internal static string QuoteArgument(string argument)
     {
         if (string.IsNullOrEmpty(argument))
         {
