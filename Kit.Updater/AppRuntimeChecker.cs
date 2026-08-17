@@ -28,7 +28,7 @@ internal static class AppRuntimeChecker
                 0,
                 null));
 
-            using (var response = await UpdaterHttpClient.Shared.GetAsync(
+            using (var response = await UpdaterHttpClient.GetAsync(
                        url,
                        HttpCompletionOption.ResponseHeadersRead,
                        ct).ConfigureAwait(false))

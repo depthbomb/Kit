@@ -24,7 +24,7 @@ internal static class WebView2RuntimeChecker
         {
             progress.Report(new InstallationProgress(InstallationPhase.DownloadingWebView2Runtime, RuntimeName, 0, null));
 
-            using (var response = await UpdaterHttpClient.Shared.GetAsync(
+            using (var response = await UpdaterHttpClient.GetAsync(
                        DownloadUrl,
                        HttpCompletionOption.ResponseHeadersRead,
                        ct).ConfigureAwait(false))

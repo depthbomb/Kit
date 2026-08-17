@@ -201,7 +201,7 @@ internal static class UpdateSourceHttp
 {
     public static async Task<string> GetStringAsync(string url, CancellationToken ct)
     {
-        using (var response = await UpdaterHttpClient.Shared.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false))
+        using (var response = await UpdaterHttpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false))
         {
             response.EnsureSuccessStatusCode();
             return await response.Content.ReadAsStringAsync().ConfigureAwait(false);

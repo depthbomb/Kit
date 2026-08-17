@@ -168,7 +168,7 @@ internal sealed class RuntimeManager
                                          IProgress<InstallationProgress> progress,
                                          CancellationToken               ct)
     {
-        using (var response = await UpdaterHttpClient.Shared.GetAsync(url, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false))
+        using (var response = await UpdaterHttpClient.GetAsync(url, System.Net.Http.HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false))
         {
             response.EnsureSuccessStatusCode();
             var contentLength = response.Content.Headers.ContentLength;
