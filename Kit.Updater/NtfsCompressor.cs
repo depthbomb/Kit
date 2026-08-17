@@ -46,21 +46,93 @@ public static class NtfsCompressor
     public static void CompressDirectoryRecursive(string rootPath, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
-        CompressDirectory(rootPath);
+        if (!TryCompressDirectory(rootPath))
+        {
+            return;
+        }
 
-        foreach (string entry in Directory.EnumerateFileSystemEntries(rootPath, "*", SearchOption.AllDirectories))
+        var pendingDirectories = new Stack<string>();
+        pendingDirectories.Push(rootPath);
+
+        while (pendingDirectories.Count > 0)
         {
             ct.ThrowIfCancellationRequested();
-            if ((File.GetAttributes(entry) & FileAttributes.Directory) != 0)
+
+            var directory = pendingDirectories.Pop();
+            string[] entries;
+            try
             {
-                CompressDirectory(entry);
+                entries = Directory.GetFileSystemEntries(directory);
             }
-            else
+            catch (Exception exception) when (IsOptionalCompressionFailure(exception))
             {
-                CompressFile(entry);
+                continue;
+            }
+
+            foreach (var entry in entries)
+            {
+                ct.ThrowIfCancellationRequested();
+
+                FileAttributes attributes;
+                try
+                {
+                    attributes = File.GetAttributes(entry);
+                }
+                catch (Exception exception) when (IsOptionalCompressionFailure(exception))
+                {
+                    continue;
+                }
+
+                if ((attributes & FileAttributes.ReparsePoint) != 0)
+                {
+                    continue;
+                }
+
+                if ((attributes & FileAttributes.Directory) != 0)
+                {
+                    if (TryCompressDirectory(entry))
+                    {
+                        pendingDirectories.Push(entry);
+                    }
+                }
+                else
+                {
+                    TryCompressFile(entry);
+                }
             }
         }
     }
+
+    private static bool TryCompressDirectory(string path)
+    {
+        try
+        {
+            CompressDirectory(path);
+            return true;
+        }
+        catch (Exception exception) when (IsOptionalCompressionFailure(exception))
+        {
+            return false;
+        }
+    }
+
+    private static void TryCompressFile(string path)
+    {
+        try
+        {
+            CompressFile(path);
+        }
+        catch (Exception exception) when (IsOptionalCompressionFailure(exception))
+        {
+            // NTFS compression is an optional optimization.
+        }
+    }
+
+    private static bool IsOptionalCompressionFailure(Exception exception)
+        => exception is Win32Exception
+            or IOException
+            or UnauthorizedAccessException
+            or NotSupportedException;
 
     private static void CompressDirectory(string path)
     {

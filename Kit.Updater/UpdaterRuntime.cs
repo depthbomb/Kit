@@ -268,7 +268,6 @@ internal sealed class UpdaterRuntime
             Report(progress, InstallationPhase.ExtractingArchive, update.Version.NormalizedValue);
 
             await _archiveExtractor.ExtractAsync(tempArchivePath, archiveExtension, extractedDirectory, ct).ConfigureAwait(false);
-            _installationPreparer.CompressIfEnabled(extractedDirectory, update.Version.NormalizedValue, progress, ct);
 
             Report(progress, InstallationPhase.ValidatingInstallation, update.Version.NormalizedValue);
 
@@ -289,6 +288,7 @@ internal sealed class UpdaterRuntime
             Report(progress, InstallationPhase.ValidatingInstallation, update.Version.NormalizedValue);
 
             _installationPreparer.ValidatePreparedInstallation(preparedDirectory);
+            _installationPreparer.CompressIfEnabled(preparedDirectory, update.Version.NormalizedValue, progress, ct);
 
             Report(progress, InstallationPhase.FinalizingInstallation, update.Version.NormalizedValue);
 
