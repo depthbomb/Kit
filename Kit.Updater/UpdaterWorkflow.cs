@@ -1,6 +1,5 @@
 using Shared;
 using Kit.Updater.Forms;
-using System.Reflection;
 
 namespace Kit.Updater;
 
@@ -42,14 +41,7 @@ internal sealed class UpdaterWorkflow
         {
             view.SetStatus(UiTextKey.LoadingConfigurationStatus, "Loading updater configuration...", true);
 
-            var executablePath    = Assembly.GetExecutingAssembly().Location;
-            var configurationJson = StampPayload.ReadConfigurationJson(executablePath);
-
-            var serializer = new System.Web.Script.Serialization.JavaScriptSerializer { MaxJsonLength = int.MaxValue };
-            var configuration = serializer.Deserialize<UpdaterConfiguration>(configurationJson)
-                                ?? throw new InvalidOperationException("The updater configuration is invalid.");
-
-            UpdaterConfigurationValidator.Validate(configuration);
+            var configuration = UpdaterConfigurationLoader.Load(typeof(UpdaterWorkflow).Assembly.Location);
             DiagnosticLog.Initialize(configuration.ApplicationName);
             DiagnosticLog.Info("configuration.loaded",
                 new KeyValuePair<string, string?>("application", configuration.ApplicationName),

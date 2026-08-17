@@ -1,9 +1,8 @@
-using Shared;
 using Kit.Updater.Forms;
 using System.Reflection;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Web.Script.Serialization;
+using System.Text;
 
 namespace Kit.Updater;
 
@@ -12,6 +11,7 @@ internal static class Program
     // ReSharper disable InconsistentNaming
     private const int SW_RESTORE = 9;
     private const int SW_SHOW    = 5;
+    private const uint ATTACH_PARENT_PROCESS = 0xFFFFFFFF;
     // ReSharper enable InconsistentNaming
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
@@ -29,22 +29,37 @@ internal static class Program
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool SetForegroundWindow(IntPtr hWnd);
 
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool AttachConsole(uint processId);
+
     [STAThread]
-    private static void Main()
+    private static int Main(string[] args)
     {
         DiagnosticLog.Initialize("updater");
         DiagnosticLog.Info("updater.start",
             new KeyValuePair<string, string?>("version", typeof(Program).Assembly.GetName().Version?.ToString()));
 
+        if (!UpdaterCommandLineOptions.TryParse(args, out var options, out var parseError))
+        {
+            AttachParentConsole();
+            Console.Error.WriteLine(parseError);
+            return UpdaterExitCode.InvalidArguments;
+        }
+
+        if (options.Mode != UpdaterCommandMode.UserInterface && !options.Silent)
+        {
+            AttachParentConsole();
+        }
+
         string  mutexName   = "Global\\KitUpdater-Unstamped";
         string? windowTitle = null;
+        Shared.UpdaterConfiguration? configuration = null;
 
         try
         {
-            var executablePath    = Assembly.GetExecutingAssembly().Location;
-            var configurationJson = StampPayload.ReadConfigurationJson(executablePath);
-            var serializer        = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
-            var configuration     = serializer.Deserialize<UpdaterConfiguration>(configurationJson);
+            var executablePath = Assembly.GetExecutingAssembly().Location;
+            configuration = UpdaterConfigurationLoader.Load(executablePath);
             if (configuration != null)
             {
                 var appName = configuration.ApplicationName;
@@ -58,8 +73,19 @@ internal static class Program
                 }
             }
         }
-        catch
+        catch (Exception exception)
         {
+            DiagnosticLog.Error("configuration.load_failed", exception);
+            if (options.Mode != UpdaterCommandMode.UserInterface)
+            {
+                if (!options.Silent)
+                {
+                    Console.Error.WriteLine(exception.Message);
+                }
+
+                return UpdaterExitCode.Failure;
+            }
+
             // Fall back to defaults if reading/parsing configuration fails
         }
 
@@ -69,12 +95,47 @@ internal static class Program
             {
                 DiagnosticLog.Info("updater.duplicate_instance");
                 RestoreAndFocusExistingInstance(windowTitle);
-                return;
+                return options.Mode == UpdaterCommandMode.UserInterface
+                    ? UpdaterExitCode.Success
+                    : UpdaterExitCode.Failure;
+            }
+
+            if (options.Mode != UpdaterCommandMode.UserInterface)
+            {
+                try
+                {
+                    return new HeadlessUpdater().RunAsync(configuration!, options, CancellationToken.None).GetAwaiter().GetResult();
+                }
+                catch (Exception exception)
+                {
+                    DiagnosticLog.Error("headless.failed", exception);
+                    if (!options.Silent)
+                    {
+                        Console.Error.WriteLine(exception.Message);
+                    }
+
+                    return UpdaterExitCode.Failure;
+                }
             }
 
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new MainForm());
+            return UpdaterExitCode.Success;
+        }
+    }
+
+    private static void AttachParentConsole()
+    {
+        try
+        {
+            AttachConsole(ATTACH_PARENT_PROCESS);
+            Console.SetOut(new StreamWriter(Console.OpenStandardOutput(), Encoding.UTF8) { AutoFlush = true });
+            Console.SetError(new StreamWriter(Console.OpenStandardError(), Encoding.UTF8) { AutoFlush = true });
+        }
+        catch
+        {
+            // Redirected standard streams may already be available.
         }
     }
 

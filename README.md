@@ -33,6 +33,29 @@ kit manifest --version <release-version> --updater <stamped-updater.exe> --packa
 kit release --app-dir <app-dir-path> --config <stamp-config.json> --updater <blank-updater.exe> [--version <release-version>] [--output-dir <output-dir-path>] [--package-name <app-package.zip>] [--updater-update-required <true|false>] [--installer-command <command>] [--installer-args <args>] [--installer-path <installer-path>]
 ```
 
+## Updater Automation
+
+The stamped updater supports noninteractive automation:
+
+```text
+updater.exe --check
+updater.exe --update [--no-launch]
+updater.exe --silent [--no-launch]
+```
+
+`--check` returns `10` when an update is available and `0` otherwise. `--update` installs optional updates without prompting. `--silent` implies `--update` and suppresses console output.
+
+Stable exit codes:
+
+- `0`: success or no update
+- `1`: failure
+- `2`: invalid arguments
+- `10`: update available
+- `11`: application update installed or selected
+- `12`: updater-refresh installer started
+- `20`: prerequisite missing
+- `21`: application currently running
+
 The CLI also reads `.kitrc`, `.kitrc.yml`, or `.kitrc.yaml` from the current directory or any parent directory. Values in that file act as defaults and can still be overridden on the command line.
 
 See `.kitrc.sample.yaml` for a ready-made example.
