@@ -60,12 +60,35 @@ internal sealed class ApplicationVersion : IComparable<ApplicationVersion>
             return false;
         }
 
-        var prereleaseSegments = prereleaseSplit.Length == 2
-            ? prereleaseSplit[1].Split('.').Where(segment => segment.Length > 0).ToList()
-            : [];
+        if (buildSplit.Length == 2 && !AreValidLabelSegments(buildSplit[1]))
+        {
+            return false;
+        }
+
+        var prereleaseSegments = new List<string>();
+        if (prereleaseSplit.Length == 2)
+        {
+            if (!AreValidLabelSegments(prereleaseSplit[1]))
+            {
+                return false;
+            }
+
+            prereleaseSegments.AddRange(prereleaseSplit[1].Split('.'));
+        }
 
         version = new ApplicationVersion(value, trimmed, numericSegments, prereleaseSegments);
         return true;
+    }
+
+    private static bool AreValidLabelSegments(string value)
+    {
+        var segments = value.Split('.');
+        return segments.Length > 0
+               && segments.All(segment => segment.Length > 0
+                                          && segment.All(character => character is >= 'a' and <= 'z'
+                                                                      or >= 'A' and <= 'Z'
+                                                                      or >= '0' and <= '9'
+                                                                      or '-'));
     }
 
     public int CompareTo(ApplicationVersion? other)

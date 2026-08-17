@@ -232,7 +232,7 @@ internal sealed class UpdaterRuntime
         var stagingRoot        = Path.Combine(_baseDirectory, ".kit-staging-" + Guid.NewGuid().ToString("N"));
         var extractedDirectory = Path.Combine(stagingRoot, "extracted");
         var preparedDirectory  = Path.Combine(stagingRoot, "prepared");
-        var targetDirectory    = Path.Combine(_baseDirectory, "app-" + update.Version.NormalizedValue);
+        var targetDirectory    = _installationState.ResolveVersionDirectory(update.Version);
 
         try
         {

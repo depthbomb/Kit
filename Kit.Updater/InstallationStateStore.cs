@@ -90,9 +90,24 @@ internal sealed class InstallationStateStore
         }
 
         var resolvedVersion = version!;
-        var directory       = Path.Combine(_baseDirectory, "app-" + resolvedVersion.NormalizedValue);
+        var directory       = ResolveVersionDirectory(resolvedVersion);
 
         return new LocalApplicationInstallation(resolvedVersion, directory, Path.Combine(directory, _configuration.LaunchExecutable));
+    }
+
+    public string ResolveVersionDirectory(ApplicationVersion version)
+    {
+        var baseDirectory = Path.GetFullPath(_baseDirectory)
+                                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var directory = Path.GetFullPath(Path.Combine(baseDirectory, "app-" + version.NormalizedValue));
+        var parentDirectory = Path.GetDirectoryName(directory);
+
+        if (!string.Equals(parentDirectory, baseDirectory, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("The application version resolves outside the updater directory.");
+        }
+
+        return directory;
     }
 
     public void MarkInstalledVersionsDirty()
